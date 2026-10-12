@@ -77,3 +77,14 @@ uv run python tools/offline_pruefen.py
 Prüft die Oberfläche auf externe Verweise und den Server auf lokale Bindung.
 
 Mehr zum Aufbau jeder Station steht in [docs/aufbau.md](docs/aufbau.md).
+
+## Lizenz
+
+MIT, siehe [LICENSE](LICENSE). Sie dürfen den Messstand für Ihre eigenen
+Workshops verwenden, verändern und weitergeben; es muss nur der
+Urheberrechtshinweis erhalten bleiben.
+
+Die Beispiel-PDFs unter `docs/` sind frei erfundenes Übungsmaterial
+(„Musterbad GmbH", „Familie Beispiel") und fallen unter dieselbe Lizenz.
+Die Modelle selbst gehören nicht zu diesem Repo: sie werden an jeder Station
+von Hand geladen und haben ihre eigenen Lizenzbedingungen.
