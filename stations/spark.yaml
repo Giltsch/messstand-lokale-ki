@@ -10,16 +10,21 @@ backends:
     typ: ollama
     url: http://127.0.0.1:11434
     modelle:
+      # „26b" ist ein Alias (16 GB). Station 2 nutzt den ausdrücklichen Tag
+      # gemma4:26b-a4b-it-q4_K_M (18 GB). Für einen Vergleich zwischen den
+      # Stationen hier denselben Tag eintragen.
       - id: gemma4:26b
         label: "Gemma 4 26B A4B, MoE"
         architektur: moe
         parameter_gesamt_mrd: 26
         parameter_aktiv_mrd: 4
+        groesse_gb: 16
       - id: gpt-oss:120b
         label: "GPT-OSS 120B, MoE (passt auf 32 GB nicht)"
         architektur: moe
         parameter_gesamt_mrd: 120
         parameter_aktiv_mrd: 5.1
+        groesse_gb: 65
   # Modell-IDs für vLLM trägt Peter nach dem Setup ein.
   - id: vllm
     label: "vLLM"

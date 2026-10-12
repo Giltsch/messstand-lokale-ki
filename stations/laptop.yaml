@@ -15,16 +15,20 @@ backends:
         architektur: dense
         parameter_gesamt_mrd: 5
         parameter_aktiv_mrd: 2
+        groesse_gb: 4.3
   - id: lmstudio
     label: "LM Studio"
     typ: openai
     url: http://127.0.0.1:1234/v1
     modelle:
+      # Modell-ID genau so eintragen, wie sie
+      # curl http://127.0.0.1:1234/v1/models meldet.
       - id: gemma4-e2b-it
         label: "Gemma 4 E2B, LM Studio"
         architektur: dense
         parameter_gesamt_mrd: 5
         parameter_aktiv_mrd: 2
+        groesse_gb: 4.6
 
 embedding:
   typ: ollama

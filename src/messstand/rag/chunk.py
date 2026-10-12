@@ -65,30 +65,58 @@ def bloecke_bilden(markdown: str) -> list[tuple[str, bool]]:
 
 
 def zerlegen(
-    markdown: str,
-    seiten: list | None = None,
+    dokument,
     ziel: int = ZIEL,
     ueberlappung: int = UEBERLAPPUNG,
 ) -> list[Abschnitt]:
-    """Baut Abschnitte aus dem Markdown, Tabellen bleiben zusammen."""
+    """Baut Abschnitte aus dem geparsten Dokument, Tabellen bleiben zusammen.
+
+    Setzt sich das Markdown aus den Seitentexten zusammen (naiv, schnell),
+    wird die Seitenzahl je Block mitgefuehrt und ist damit genau. Bei Docling
+    ist das Markdown eigenstaendig, dort wird die Seite ueber Textvergleich
+    geschaetzt und bleibt im Zweifel leer.
+    """
     from .parse import seite_finden
 
-    bloecke = bloecke_bilden(markdown)
+    seiten = getattr(dokument, "seiten", None) or []
+    aus_seiten = getattr(dokument, "markdown_aus_seiten", True) and any(
+        s.text.strip() for s in seiten
+    )
+
+    bloecke: list[tuple[str, bool, int | None]] = []
+    if aus_seiten:
+        for seite in seiten:
+            for text, ist_tabelle in bloecke_bilden(seite.text):
+                bloecke.append((text, ist_tabelle, seite.nummer))
+    else:
+        for text, ist_tabelle in bloecke_bilden(dokument.markdown):
+            bloecke.append((text, ist_tabelle, None))
+
     abschnitte: list[Abschnitt] = []
     laufend: list[str] = []
     laufend_tabelle = False
+    laufend_seite: int | None = None
+    # Steht nur die Ueberlappung des Vorgaengers im Puffer, darf daraus kein
+    # eigener Abschnitt werden. Sonst landen Dubletten ohne Seite im Index.
+    eigener_inhalt = False
 
     def abschliessen() -> None:
-        nonlocal laufend, laufend_tabelle
+        nonlocal laufend, laufend_tabelle, laufend_seite, eigener_inhalt
+        if not eigener_inhalt:
+            return
         text = "\n\n".join(laufend).strip()
         if not text:
-            laufend, laufend_tabelle = [], False
+            laufend, laufend_tabelle, laufend_seite = [], False, None
+            eigener_inhalt = False
             return
+        seite = laufend_seite
+        if seite is None and not aus_seiten:
+            seite = seite_finden(text, seiten)
         abschnitte.append(
             Abschnitt(
                 nr=len(abschnitte) + 1,
                 text=text,
-                seite=seite_finden(text, seiten or []),
+                seite=seite,
                 ist_tabelle=laufend_tabelle,
             )
         )
@@ -96,8 +124,19 @@ def zerlegen(
         schwanz = text[-ueberlappung:] if ueberlappung > 0 else ""
         laufend = [schwanz.strip()] if schwanz.strip() else []
         laufend_tabelle = False
+        # Die Seite des naechsten Abschnitts setzt der naechste Block.
+        laufend_seite = None
+        eigener_inhalt = False
 
-    for text, ist_tabelle in bloecke:
+    def anhaengen(text: str, ist_tabelle: bool, seite: int | None) -> None:
+        nonlocal laufend_tabelle, laufend_seite, eigener_inhalt
+        laufend.append(text)
+        laufend_tabelle = laufend_tabelle or ist_tabelle
+        eigener_inhalt = True
+        if laufend_seite is None:
+            laufend_seite = seite
+
+    for text, ist_tabelle, seite in bloecke:
         laenge = sum(len(t) for t in laufend) + len(text)
         if laufend and laenge > ziel:
             abschliessen()
@@ -106,10 +145,9 @@ def zerlegen(
             for stueck in _saetze_stapeln(text, ziel):
                 if laufend and sum(len(t) for t in laufend) + len(stueck) > ziel:
                     abschliessen()
-                laufend.append(stueck)
+                anhaengen(stueck, False, seite)
             continue
-        laufend.append(text)
-        laufend_tabelle = laufend_tabelle or ist_tabelle
+        anhaengen(text, ist_tabelle, seite)
         if sum(len(t) for t in laufend) >= ziel:
             abschliessen()
     abschliessen()

@@ -7,7 +7,8 @@ Lesarten, sichtbar unterschiedliche Ergebnisse, besonders bei Tabellen.
 from __future__ import annotations
 
 import contextlib
-import io
+import os
+import sys
 import time
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -17,6 +18,27 @@ PARSER_NAMEN = {
     "schnell": "Schnell (PyMuPDF, Markdown)",
     "strukturiert": "Strukturiert (Docling)",
 }
+
+
+@contextlib.contextmanager
+def _still():
+    """Schluckt Ausgaben, auch die aus C-Bibliotheken (PyMuPDF, Tesseract).
+
+    Ein Python-Redirect genuegt nicht: die Meldungen gehen direkt auf den
+    Dateideskriptor. Die Konsole des Messstands soll im Workshop ruhig sein.
+    """
+    # Erst alles Gepufferte rausschreiben, sonst landet es im Nirgendwo.
+    sys.stdout.flush()
+    ziel = os.open(os.devnull, os.O_WRONLY)
+    gemerkt = os.dup(1)
+    try:
+        os.dup2(ziel, 1)
+        yield
+    finally:
+        sys.stdout.flush()
+        os.dup2(gemerkt, 1)
+        os.close(gemerkt)
+        os.close(ziel)
 
 
 class ParserFehler(RuntimeError):
@@ -37,6 +59,10 @@ class Dokument:
     seiten: list[Seite] = field(default_factory=list)
     markdown: str = ""
     dauer_s: float = 0.0
+    # True, wenn das Markdown aus den Seitentexten zusammengesetzt ist. Dann
+    # ist die Seitenzahl je Abschnitt genau bekannt. Bei Docling ist das
+    # Markdown eigenstaendig, die Seite wird dort geschaetzt.
+    markdown_aus_seiten: bool = True
 
     @property
     def zeichen(self) -> int:
@@ -65,12 +91,14 @@ def parsen(pfad: str | Path, parser: str) -> Dokument:
     if not p.is_file():
         raise ParserFehler(f"Die Datei wurde nicht gefunden: {p.name}")
     start = time.perf_counter()
+    aus_seiten = True
     if parser == "naiv":
         seiten, markdown = _naiv(p)
     elif parser == "schnell":
         seiten, markdown = _schnell(p)
     elif parser == "strukturiert":
         seiten, markdown = _strukturiert(p)
+        aus_seiten = False
     else:
         raise ParserFehler(f"Unbekannter Parser: {parser}")
     if not markdown.strip():
@@ -85,6 +113,7 @@ def parsen(pfad: str | Path, parser: str) -> Dokument:
         seiten=seiten,
         markdown=markdown,
         dauer_s=time.perf_counter() - start,
+        markdown_aus_seiten=aus_seiten,
     )
 
 
@@ -108,9 +137,7 @@ def _schnell(p: Path) -> tuple[list[Seite], str]:
         import pymupdf4llm
     except ImportError as fehler:  # pragma: no cover
         raise ParserFehler("pymupdf4llm ist nicht installiert.") from fehler
-    # PyMuPDF schreibt Hinweise auf die Standardausgabe. Die Konsole des
-    # Messstands soll im Workshop ruhig bleiben.
-    with contextlib.redirect_stdout(io.StringIO()):
+    with _still():
         teile = pymupdf4llm.to_markdown(str(p), page_chunks=True)
     seiten: list[Seite] = []
     for i, teil in enumerate(teile):
@@ -131,7 +158,8 @@ def _strukturiert(p: Path) -> tuple[list[Seite], str]:
             "Der strukturierte Parser braucht Docling. Installation: "
             "uv sync --extra docling"
         ) from fehler
-    dokument = DocumentConverter().convert(str(p)).document
+    with _still():
+        dokument = DocumentConverter().convert(str(p)).document
     markdown = dokument.export_to_markdown()
     # Docling liefert ein Markdown fuer das ganze Dokument. Die Seitenzahlen
     # kommen aus einem zweiten, schnellen Durchlauf und werden ueber

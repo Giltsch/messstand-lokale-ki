@@ -15,6 +15,10 @@ class ModellCfg(BaseModel):
     architektur: Literal["dense", "moe"] = "dense"
     parameter_gesamt_mrd: float | None = None
     parameter_aktiv_mrd: float | None = None
+    # Belegter Speicher in Gigabyte. Treibt die Vorhersage, wenn zwei Modelle
+    # gleich viele aktive Parameter haben, aber unterschiedlich quantisiert
+    # sind: je Token muss die ganze Datei einmal gelesen werden.
+    groesse_gb: float | None = None
 
 
 class BackendCfg(BaseModel):

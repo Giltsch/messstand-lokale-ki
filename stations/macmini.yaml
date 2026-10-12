@@ -1,3 +1,7 @@
+# Station 2, Mac mini M4 mit 32 GB.
+# Die Modell-IDs sind gegen ollama.com/library/gemma4 geprueft, die Groessen
+# stammen von dort. Paarungen in "vergleiche" sind so gewaehlt, dass sich je
+# Vergleich nur eine Eigenschaft unterscheidet.
 station:
   name: "Station 2: Der kleine Dauerläufer"
   geraet: "Mac mini, M4, 32 GB"
@@ -11,30 +15,52 @@ backends:
     url: http://127.0.0.1:11434
     modelle:
       - id: gemma4:e4b-it-q4_K_M
-        label: "Gemma 4 E4B, 4 Bit, GGUF"
+        label: "Gemma 4 E4B, 4 Bit (Q4_K_M), GGUF"
         architektur: dense
         parameter_gesamt_mrd: 8
         parameter_aktiv_mrd: 4.5
-      - id: gemma4:26b
-        label: "Gemma 4 26B A4B, MoE"
+        groesse_gb: 6.6
+      - id: gemma4:e4b-it-q8_0
+        label: "Gemma 4 E4B, 8 Bit (Q8_0), GGUF"
+        architektur: dense
+        parameter_gesamt_mrd: 8
+        parameter_aktiv_mrd: 4.5
+        groesse_gb: 9.0
+      - id: gemma4:e4b-it-bf16
+        label: "Gemma 4 E4B, 16 Bit (BF16), GGUF"
+        architektur: dense
+        parameter_gesamt_mrd: 8
+        parameter_aktiv_mrd: 4.5
+        groesse_gb: 16
+      - id: gemma4:26b-a4b-it-q4_K_M
+        label: "Gemma 4 26B A4B, MoE, 4 Bit"
         architektur: moe
         parameter_gesamt_mrd: 26
         parameter_aktiv_mrd: 4
+        groesse_gb: 18
       - id: gemma4:31b-it-q4_K_M
-        label: "Gemma 4 31B, dense"
+        label: "Gemma 4 31B, dense, 4 Bit"
         architektur: dense
         parameter_gesamt_mrd: 31
         parameter_aktiv_mrd: 31
+        groesse_gb: 20
   - id: ollama-mlx
     label: "Ollama, MLX"
     typ: ollama
     url: http://127.0.0.1:11434
     modelle:
       - id: gemma4:e4b-mlx
-        label: "Gemma 4 E4B, 4 Bit, MLX"
+        label: "Gemma 4 E4B, MLX"
         architektur: dense
         parameter_gesamt_mrd: 8
         parameter_aktiv_mrd: 4.5
+        groesse_gb: 9.5
+      - id: gemma4:26b-mlx
+        label: "Gemma 4 26B A4B, MoE, MLX"
+        architektur: moe
+        parameter_gesamt_mrd: 26
+        parameter_aktiv_mrd: 4
+        groesse_gb: 18
 
 embedding:
   typ: ollama
@@ -44,12 +70,28 @@ embedding:
 parser: [naiv, schnell, strukturiert]
 
 vergleiche:
+  # MLX belegt 9,5 GB, das GGUF-Gegenstueck mit 8 Bit 9,0 GB. Nur so
+  # unterscheidet sich wirklich der Unterbau und nicht die Quantisierung:
+  # das 4-Bit-GGUF waere mit 6,6 GB im Vorteil.
   - name: "Gleiches Modell, anderer Unterbau"
-    a: { backend: ollama-gguf, modell: gemma4:e4b-it-q4_K_M }
+    a: { backend: ollama-gguf, modell: gemma4:e4b-it-q8_0 }
     b: { backend: ollama-mlx,  modell: gemma4:e4b-mlx }
+  # 20 GB dense gegen 18 GB MoE: aehnlich viel Speicher, aber 31 gegen
+  # 4 Milliarden aktive Parameter.
   - name: "Dense gegen MoE"
     a: { backend: ollama-gguf, modell: gemma4:31b-it-q4_K_M }
-    b: { backend: ollama-gguf, modell: gemma4:26b }
+    b: { backend: ollama-gguf, modell: gemma4:26b-a4b-it-q4_K_M }
+  # Gleiche Gewichte, drei Praezisionen. Zeigt die Speicherbandbreite.
+  - name: "Vier Bit gegen acht Bit"
+    a: { backend: ollama-gguf, modell: gemma4:e4b-it-q8_0 }
+    b: { backend: ollama-gguf, modell: gemma4:e4b-it-q4_K_M }
+  - name: "Vier Bit gegen sechzehn Bit"
+    a: { backend: ollama-gguf, modell: gemma4:e4b-it-bf16 }
+    b: { backend: ollama-gguf, modell: gemma4:e4b-it-q4_K_M }
+  # Beide 18 GB, derselbe MoE, nur ein anderer Unterbau.
+  - name: "MLX gegen GGUF beim MoE"
+    a: { backend: ollama-gguf, modell: gemma4:26b-a4b-it-q4_K_M }
+    b: { backend: ollama-mlx,  modell: gemma4:26b-mlx }
 
 lasttest:
   erlaubt: true

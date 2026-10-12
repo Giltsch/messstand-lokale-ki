@@ -51,6 +51,8 @@ backends:
         parameter_gesamt_mrd: 4.3
         parameter_aktiv_mrd: 4.3
 
+  # LM Studio muss dafuer laufen (Server auf Port 1234). Laeuft es nicht,
+  # ist der Statuspunkt rot und die anderen Reiter arbeiten weiter.
   - id: lmstudio
     label: "LM Studio"
     typ: openai

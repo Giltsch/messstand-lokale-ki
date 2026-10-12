@@ -61,40 +61,69 @@ export function vergleichAufbauen(wurzel) {
     vorhersageZeichnen();
   }
 
-  // Erwartung aus dem Verhältnis der aktiven Parameter. Gleiche
-  // Quantisierung vorausgesetzt: halb so viele aktive Parameter,
-  // etwa doppeltes Schreibtempo.
+  // Zwei Erwartungen sind möglich, beide betreffen das Schreibtempo:
+  //  1. Verschieden viele aktive Parameter: halb so viele, etwa doppeltes Tempo.
+  //  2. Gleich viele aktive Parameter, aber andere Quantisierung: dann zählt
+  //     die Dateigröße, denn je Token wird das ganze Modell einmal gelesen.
   function vorhersageZeichnen() {
     const wahlA = auswahlA.wert();
     const wahlB = auswahlB.wert();
     const a = modellVon(wahlA.backend, wahlA.modell);
     const b = modellVon(wahlB.backend, wahlB.modell);
-    const aktivA = a?.parameter_aktiv_mrd;
-    const aktivB = b?.parameter_aktiv_mrd;
-    if (!aktivA || !aktivB || Math.abs(aktivA / aktivB - 1) < 0.15) {
+    const schaetzung = schaetzen(a, b);
+    if (!schaetzung) {
       vorhersage.hidden = true;
+      vorhersage.dataset.erwartet = "";
       return;
     }
-    const erwartet = aktivA / aktivB;
-    const schneller = erwartet > 1 ? "B" : "A";
-    const wert = erwartet > 1 ? erwartet : 1 / erwartet;
     vorhersage.hidden = false;
     vorhersage.replaceChildren(
-      el("div", {
-        html:
-          `<b>Vorhersage:</b> ${schneller} hat ${zahl(Math.max(aktivA, aktivB) / Math.min(aktivA, aktivB), 1)}-mal ` +
-          `weniger aktive Parameter (${zahl(aktivA, 1)} gegen ${zahl(aktivB, 1)} Milliarden). ` +
-          `Erwartung beim Schreibtempo: grob Faktor <b>${faktor(wert)}</b> für ${schneller}.`,
-      }),
-      el("div", {
-        class: "klein leise",
-        id: "vorhersage-abgleich",
-        text: "Der gemessene Faktor steht nach dem Lauf daneben. Dass er darunter " +
-          "liegt, ist normal: ein MoE-Modell hat Verwaltungsaufwand.",
-      })
+      el("div", { html: `<b>Vorhersage:</b> ${schaetzung.satz}` }),
+      el("div", { class: "klein leise", text: schaetzung.hinweis })
     );
-    vorhersage.dataset.erwartet = String(wert);
-    vorhersage.dataset.schneller = schneller;
+    vorhersage.dataset.erwartet = String(schaetzung.faktor);
+    vorhersage.dataset.schneller = schaetzung.schneller;
+  }
+
+  function schaetzen(a, b) {
+    const aktivA = a?.parameter_aktiv_mrd;
+    const aktivB = b?.parameter_aktiv_mrd;
+    if (aktivA && aktivB && Math.abs(aktivA / aktivB - 1) >= 0.15) {
+      const erwartet = aktivA / aktivB;
+      const schneller = erwartet > 1 ? "B" : "A";
+      const wert = erwartet > 1 ? erwartet : 1 / erwartet;
+      return {
+        faktor: wert,
+        schneller,
+        satz:
+          `${schneller} rechnet mit ${zahl(Math.max(aktivA, aktivB) / Math.min(aktivA, aktivB), 1)}-mal ` +
+          `weniger aktiven Parametern (${zahl(aktivA, 1)} gegen ${zahl(aktivB, 1)} Milliarden). ` +
+          `Erwartung beim Schreibtempo: grob Faktor <b>${faktor(wert)}</b> für ${schneller}.`,
+        hinweis:
+          "Der gemessene Faktor steht nach dem Lauf daneben. Dass er darunter " +
+          "liegt, ist normal: ein MoE-Modell hat Verwaltungsaufwand.",
+      };
+    }
+    const groesseA = a?.groesse_gb;
+    const groesseB = b?.groesse_gb;
+    if (groesseA && groesseB && Math.abs(groesseA / groesseB - 1) >= 0.1) {
+      const erwartet = groesseA / groesseB;
+      const schneller = erwartet > 1 ? "B" : "A";
+      const wert = erwartet > 1 ? erwartet : 1 / erwartet;
+      return {
+        faktor: wert,
+        schneller,
+        satz:
+          `Gleich viele aktive Parameter, aber ${schneller} belegt ` +
+          `${zahl(Math.max(groesseA, groesseB) / Math.min(groesseA, groesseB), 1)}-mal weniger Speicher ` +
+          `(${zahl(groesseA, 1)} gegen ${zahl(groesseB, 1)} GB). Für jedes Token muss das ganze Modell ` +
+          `einmal gelesen werden, Erwartung beim Schreibtempo also grob Faktor <b>${faktor(wert)}</b> für ${schneller}.`,
+        hinweis:
+          "Hier begrenzt die Speicherbandbreite, nicht die Rechenleistung. " +
+          "Darum folgt das Tempo der Dateigröße und nicht der Parameterzahl.",
+      };
+    }
+    return null;
   }
 
   function beschriftung(auswahl, buchstabe) {
@@ -237,7 +266,7 @@ export function vergleichAufbauen(wurzel) {
         const besserB = m.kleinerBesser ? wertB < wertA : wertB > wertA;
         const f = Math.max(wertA, wertB) / Math.min(wertA, wertB);
         satz = `${besserB ? "B" : "A"} ${m.satz.replace("{f}", faktor(f))}`;
-        if (m.schluessel === "decode_tps" && !vorhersage.hidden) {
+        if (m.schluessel === "decode_tps" && !vorhersage.hidden && vorhersage.dataset.erwartet) {
           const erwartet = Number(vorhersage.dataset.erwartet);
           satz += ` — vorhergesagt war grob ${faktor(erwartet)} für ${vorhersage.dataset.schneller}`;
         }

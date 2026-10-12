@@ -71,6 +71,30 @@ damit niemand rätseln muss, woher die Zahlen kommen.
   sie meldet
 - Start: `./start.sh`
 
+## Material für den Reiter „Dokumente"
+
+In `docs/` liegen sechs Platzhalter-PDFs. Jede zeigt eine andere Schwäche
+beim Parsen. Neu bauen lassen sie sich mit
+`uv run python tools/beispiel_pdfs_erzeugen.py`.
+
+| Datei | Zeigt | Erprobte Frage | Erwartete Antwort |
+|---|---|---|---|
+| `beispiel-preisliste.pdf` | Einfache Tabelle auf einer Seite | Was kostet das Verlegen von Bodenfliesen pro Quadratmeter netto? | 74,50 EUR |
+| `beispiel-angebot-mehrseitig.pdf` | Vier Seiten, Tabelle über den Seitenumbruch | Wie hoch ist die zweite Rate und wann wird sie fällig? | 4.757,14 EUR brutto, Quelle Seite 3 |
+| `beispiel-merkblatt-zweispaltig.pdf` | Zwei Spalten, Lesereihenfolge | Ab wann darf ich nach der Abnahme wieder duschen? | Frühestens am zweiten Tag |
+| `beispiel-rechnung.pdf` | Summenblock mit Zwischensummen | Wie hoch ist der offene Betrag? | 3.321,51 EUR, nicht die Zwischensumme |
+| `beispiel-hausordnung-lang.pdf` | Zwölf Seiten, zwanzig Abschnitte | Wer zahlt eine neue Schließanlage bei Schlüsselverlust? | Die verursachende Partei, Quelle Seite 11 |
+| `beispiel-scan-ohne-textebene.pdf` | Bild ohne Textebene | Wie groß ist die Bodenfläche des Bades? | 8,2 Quadratmeter, aber nur mit Parser „schnell" |
+
+Die letzte Datei ist der stärkste Vergleich: der Parser „naiv" findet
+überhaupt keinen Text und sagt das in Klartext, während „schnell" über die
+Texterkennung an den Inhalt kommt. Ein guter Anlass, über eingescannte
+Unterlagen zu sprechen.
+
+Nehmen Sie für diesen Reiter kein Ein-Milliarden-Modell. Für das Arbeiten
+mit Quellen braucht es mindestens die Vier-Milliarden-Klasse, sonst
+beantwortet das Modell die Frage nicht, sondern beschreibt die Abschnitte.
+
 ## Vor dem Workshop prüfen
 
 ```
@@ -91,6 +115,11 @@ Checkliste je Station:
 - [ ] Reiter „Vergleich": beide Seiten liefern Werte, Balken erscheinen
 - [ ] Reiter „Last": die eingestellte Zahl Bahnen läuft durch
 - [ ] Reiter „Dokumente": Beispiel-PDF einlesen, Tabellenfrage stellen
+- [ ] Nur wo Docling gebraucht wird: nach `uv sync --extra docling` den
+      Parser „strukturiert" einmal einlesen und die Tabellenfrage stellen.
+      Dieser Weg ist bisher nicht gelaufen, weil Docling nicht installiert
+      war. Die Seitenzahlen kommen dort aus einem Textvergleich mit der
+      Seitenaufteilung, bei Bedarf steht „Seite unbekannt".
 - [ ] Reiter „Ergebnisse": CSV speichern, Datei liegt in `results/`
 - [ ] Netzwerk trennen, alles noch einmal kurz durchspielen
 

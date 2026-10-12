@@ -447,7 +447,7 @@ def app_bauen(cfg: konfig.StationConfig) -> FastAPI:
             dokument = await asyncio.to_thread(parsen, pfad, parser)
         except ParserFehler as fehler:
             raise HTTPException(400, str(fehler)) from fehler
-        abschnitte = zerlegen(dokument.markdown, dokument.seiten)
+        abschnitte = zerlegen(dokument)
         index_id = f"{schluessel}|{parser}"
         try:
             index = await index_bauen(

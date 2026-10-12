@@ -64,6 +64,7 @@ stehen in der Oberfläche und in `generierung` der Stations-YAML.
 | `static/` | Oberfläche: eine HTML-Datei, CSS, Vanilla-JS als ES-Module |
 | `stations/` | Eine YAML-Datei pro Station. Alle Unterschiede stehen hier. |
 | `presets/` | Aufgabenkarte und Beispieltext des Workshops |
+| `docs/` | Beispiel-PDFs und die Aufbauanleitung |
 | `results/` | CSV-Ausgaben (nicht im Repo) |
 | `tools/` | Hilfsskripte: Offline-Prüfung, Platzhalter-PDF erzeugen |
 
