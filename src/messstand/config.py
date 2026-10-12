@@ -28,6 +28,10 @@ class BackendCfg(BaseModel):
     url: str
     api_key: str | None = None
     modelle: list[ModellCfg] = Field(default_factory=list)
+    # Nur Ollama: so viele GB duerfen geladene Modelle zusammen belegen. Passt
+    # ein neues Modell nicht mehr hinein, entlaedt der Messstand vorher die am
+    # laengsten nicht benutzten. Ohne Angabe entscheidet Ollama allein.
+    speicher_budget_gb: float | None = None
 
     def modell(self, modell_id: str) -> ModellCfg | None:
         return next((m for m in self.modelle if m.id == modell_id), None)

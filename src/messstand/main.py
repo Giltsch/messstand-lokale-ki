@@ -10,6 +10,7 @@ import asyncio
 import json
 import sys
 import threading
+import time
 import webbrowser
 from contextlib import aclosing, asynccontextmanager
 from pathlib import Path
@@ -22,7 +23,7 @@ from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 
 from . import __version__, config as konfig
-from .backends import backend_bauen, params_aus_config
+from .backends import OllamaBackend, backend_bauen, params_aus_config
 from .backends.base import (
     Backend,
     DenkEvent,
@@ -132,6 +133,13 @@ class Zustand:
         self.verfuegbar: dict[str, list[str]] = {}
         self.online: dict[str, bool] = {}
         self.warm: dict[str, set[str]] = {b.id: set() for b in cfg.backends}
+        # Fuer das Entladen nach Speicherbudget: wann jedes Modell zuletzt
+        # gebraucht wurde und wie gross es geladen tatsaechlich war.
+        self.zuletzt: dict[tuple[str, str], float] = {}
+        self.beobachtet_gb: dict[tuple[str, str], float] = {}
+        self.speicher_sperre: dict[str, asyncio.Lock] = {
+            b.id: asyncio.Lock() for b in cfg.backends
+        }
         self.indizes: dict[str, Any] = {}
         self.aufgabenkarte: dict = {}
         self.beispieltext: str = ""
@@ -146,6 +154,12 @@ class Zustand:
             )
 
         await asyncio.gather(*(eines(b) for b in self.backends.values()))
+        for backend_id, backend in self.backends.items():
+            if isinstance(backend, OllamaBackend) and self.online.get(backend_id):
+                try:
+                    self._geladen_merken(backend_id, await backend.geladen())
+                except Exception:
+                    pass
         if self.embedding is not None:
             self.online["__embedding__"] = await self.embedding.health()
             self.verfuegbar["__embedding__"] = (
@@ -153,6 +167,81 @@ class Zustand:
                 if self.online["__embedding__"]
                 else []
             )
+
+    def _geladen_merken(self, backend_id: str, geladen: dict[str, float]) -> None:
+        """Warm-Markierung an den tatsaechlichen Speicher angleichen.
+
+        Entlaedt Ollama selbst ein Modell, soll die Oberflaeche es nicht
+        weiter als warm zeigen.
+        """
+        for name, gb in geladen.items():
+            self.beobachtet_gb[(backend_id, name)] = gb
+        self.warm[backend_id] = {
+            m for m in self.warm.get(backend_id, set()) if m in geladen
+        }
+
+    def _groesse_gb(self, backend_id: str, modell_id: str, geladen_gb: float = 0) -> float:
+        """Belegter Speicher eines Modells, so gut er sich schaetzen laesst.
+
+        `ollama ps` meldet bei manchen Modellen zu wenig (gemma4:e4b: 1,2 GB
+        statt 6,6), darum nie weniger als die Dateigroesse aus der YAML.
+        Fuer noch nie geladene Modelle kommt der Kontextspeicher dazu.
+        """
+        backend_cfg = self.cfg.backend(backend_id)
+        modell_cfg = backend_cfg.modell(modell_id) if backend_cfg else None
+        datei = (modell_cfg.groesse_gb or 0) if modell_cfg else 0
+        beobachtet = self.beobachtet_gb.get((backend_id, modell_id), 0)
+        if geladen_gb or beobachtet:
+            return max(geladen_gb, beobachtet, datei)
+        return datei * 1.15
+
+    async def platz_schaffen(self, backend_id: str, modell_id: str) -> list[str]:
+        """Vor dem Laden: aelteste Modelle entladen, bis das neue ins Budget passt.
+
+        Gibt die entladenen Modelle zurueck. Ohne `speicher_budget_gb` in der
+        Stations-YAML passiert nichts ausser dem Merken der Benutzung.
+        """
+        self.zuletzt[(backend_id, modell_id)] = time.monotonic()
+        backend = self.backends.get(backend_id)
+        backend_cfg = self.cfg.backend(backend_id)
+        if (
+            not isinstance(backend, OllamaBackend)
+            or backend_cfg is None
+            or backend_cfg.speicher_budget_gb is None
+        ):
+            return []
+        budget = backend_cfg.speicher_budget_gb
+        geschuetzt = {modell_id}
+        if self.cfg.embedding and self.cfg.embedding.typ == "ollama":
+            geschuetzt.add(self.cfg.embedding.modell.removesuffix(":latest"))
+
+        entladen: list[str] = []
+        async with self.speicher_sperre[backend_id]:
+            try:
+                geladen = await backend.geladen()
+            except Exception:
+                return []
+            self._geladen_merken(backend_id, geladen)
+            if modell_id in geladen:
+                return []
+            belegt = {n: self._groesse_gb(backend_id, n, gb) for n, gb in geladen.items()}
+            bedarf = self._groesse_gb(backend_id, modell_id)
+            # Nie benutzte (etwa von Hand geladene) Modelle zuerst, dann die aeltesten.
+            kandidaten = sorted(
+                (n for n in geladen if n not in geschuetzt),
+                key=lambda n: self.zuletzt.get((backend_id, n), 0.0),
+            )
+            for name in kandidaten:
+                if sum(belegt.values()) + bedarf <= budget:
+                    break
+                try:
+                    await backend.entladen(name)
+                except Exception:
+                    continue
+                belegt.pop(name)
+                entladen.append(name)
+                self.warm[backend_id].discard(name)
+        return entladen
 
     def modell_vorhanden(self, backend_id: str, modell_id: str) -> bool:
         liste = self.verfuegbar.get(backend_id)
@@ -178,6 +267,7 @@ class Zustand:
                     "typ": b.typ,
                     "url": b.url,
                     "online": self.online.get(b.id, False),
+                    "speicher_budget_gb": b.speicher_budget_gb,
                     "modelle": [
                         {
                             **m.model_dump(),
@@ -271,6 +361,7 @@ def app_bauen(cfg: konfig.StationConfig) -> FastAPI:
         backend_id = rumpf.get("backend", "")
         modell_id = rumpf.get("modell", "")
         backend, _cfg = zustand.backend_oder_fehler(backend_id)
+        entladen = await zustand.platz_schaffen(backend_id, modell_id)
         try:
             await backend.warmup(modell_id, params_aus_config(cfg.generierung))
         except Exception as fehler:
@@ -283,7 +374,10 @@ def app_bauen(cfg: konfig.StationConfig) -> FastAPI:
                 },
             )
         zustand.warm.setdefault(backend_id, set()).add(modell_id)
-        return {"ok": True, "nachricht": f"Modell '{modell_id}' ist geladen."}
+        nachricht = f"Modell '{modell_id}' ist geladen."
+        if entladen:
+            nachricht += " Entladen, um Platz zu schaffen: " + ", ".join(entladen) + "."
+        return {"ok": True, "nachricht": nachricht, "entladen": entladen}
 
     @app.post("/api/chat")
     async def chat(rumpf: dict) -> StreamingResponse:
@@ -308,12 +402,14 @@ def app_bauen(cfg: konfig.StationConfig) -> FastAPI:
         params.thinking = thinking
 
         async def erzeugen() -> AsyncIterator[str]:
+            entladen = await zustand.platz_schaffen(backend_id, modell_id)
             yield sse(
                 {
                     "art": "start",
                     "backend": backend_id,
                     "modell": modell_id,
                     "warm": modell_id in zustand.warm.get(backend_id, set()),
+                    "entladen": entladen,
                 }
             )
             # aclosing: bricht der Browser ab, wird der Generator sofort
@@ -489,6 +585,7 @@ def app_bauen(cfg: konfig.StationConfig) -> FastAPI:
         params.thinking = bool(rumpf.get("thinking", cfg.generierung.thinking))
 
         async def erzeugen() -> AsyncIterator[str]:
+            await zustand.platz_schaffen(backend_id, modell_id)
             try:
                 treffer = await index.suchen(zustand.embedding, frage, top=4)
             except Exception as fehler:
@@ -570,6 +667,7 @@ def app_bauen(cfg: konfig.StationConfig) -> FastAPI:
         params.thinking = bool(rumpf.get("thinking", cfg.generierung.thinking))
 
         async def erzeugen() -> AsyncIterator[str]:
+            await zustand.platz_schaffen(backend_id, modell_id)
             async with aclosing(
                 lasttest(backend, modell_id, prompt, parallel, params)
             ) as strom_ereignisse:

@@ -82,14 +82,24 @@ export function vergleichAufbauen(wurzel) {
   // Seite B die Seite A hinaus. Dann kann man nicht beide warm halten, und der
   // uebliche Rat "beide vorladen und wiederholen" fuehrt in die Sackgasse.
   // Reserve fuer Betriebssystem und Kontext: ein Sechstel des Speichers.
-  function platzProblem(a, b) {
+  // Hat die Laufzeit ein Speicherbudget (speicher_budget_gb), gilt dieses:
+  // daneben laeuft auf der Station noch etwas anderes, etwa vLLM.
+  function platzProblem(a, b, backendA, backendB) {
     const gb = store.station?.station?.speicher_gb;
     if (!gb || !a?.groesse_gb || !b?.groesse_gb) return null;
     const zusammen = a.groesse_gb + b.groesse_gb;
-    if (zusammen <= gb * 0.85) return null;
+    const budget =
+      backendA && backendA === backendB
+        ? store.station?.backends?.find((x) => x.id === backendA)?.speicher_budget_gb
+        : null;
+    const grenze = budget || gb * 0.85;
+    if (zusammen <= grenze) return null;
+    const verfuegbar = budget
+      ? `für Modelle stehen hier ${zahl(budget, 0)} GB bereit`
+      : `die Station hat ${gb} GB`;
     return (
-      `Beide Modelle zusammen belegen ${zahl(zusammen, 1)} GB, die Station hat ` +
-      `${gb} GB. Sie passen nicht gleichzeitig hinein: das zweite Modell ` +
+      `Beide Modelle zusammen belegen ${zahl(zusammen, 1)} GB, ${verfuegbar}. ` +
+      "Sie passen nicht gleichzeitig hinein: das zweite Modell " +
       "verdrängt das erste. Jede Seite wird darum einzeln geladen, und die " +
       "Ladezeit erscheint als „kalt gestartet“. Das ist hier normal und kein Fehler."
     );
@@ -101,7 +111,7 @@ export function vergleichAufbauen(wurzel) {
     const a = modellVon(wahlA.backend, wahlA.modell);
     const b = modellVon(wahlB.backend, wahlB.modell);
     const schaetzung = schaetzen(a, b);
-    const platz = platzProblem(a, b);
+    const platz = platzProblem(a, b, wahlA.backend, wahlB.backend);
     passtNicht = Boolean(platz);
     if (!schaetzung && !platz) {
       vorhersage.hidden = true;

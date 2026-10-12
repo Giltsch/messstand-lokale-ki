@@ -74,20 +74,38 @@ class OllamaBackend(HttpBackend):
 
         Die Kontextlaenge muss dieselbe sein wie bei der Messung, sonst laedt
         Ollama das Modell fuer die Messung erneut und sie zaehlt als kalt.
+
+        Ein leerer Chat laedt nur die Gewichte. Die erste echte Rechnung kostet
+        auf manchen GPUs einmalig mehrere Sekunden (DGX Spark: rund 12 s), die
+        sonst in der ersten Messung landen. Darum ein Prompt mit einem Token.
         """
+        optionen: dict[str, Any] = {"num_predict": 1}
+        if params is not None:
+            optionen["num_ctx"] = params.num_ctx
         nutzdaten: dict[str, Any] = {
             "model": model,
-            "messages": [],
+            "messages": [{"role": "user", "content": "Hallo"}],
+            "stream": False,
             "keep_alive": -1,
+            "options": optionen,
         }
-        if params is not None:
-            nutzdaten["options"] = {"num_ctx": params.num_ctx}
         antwort = await self.client.post(
             f"{self.url}/api/chat",
             json=nutzdaten,
             timeout=httpx.Timeout(10.0, read=600.0, connect=5.0),
         )
         antwort.raise_for_status()
+
+    async def geladen(self) -> dict[str, float]:
+        """Die Modelle, die gerade im Speicher liegen, mit Groesse in GB."""
+        antwort = await self.client.get(f"{self.url}/api/ps", timeout=5.0)
+        antwort.raise_for_status()
+        ergebnis: dict[str, float] = {}
+        for modell in antwort.json().get("models", []):
+            name = (modell.get("name") or modell.get("model") or "").removesuffix(":latest")
+            if name:
+                ergebnis[name] = (modell.get("size") or 0) / 1e9
+        return ergebnis
 
     async def entladen(self, model: str) -> None:
         """Gibt den Speicher wieder frei (keep_alive: 0)."""
