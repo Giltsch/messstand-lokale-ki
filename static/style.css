@@ -443,3 +443,47 @@ table.tabelle tbody tr:hover { background: var(--flaeche-2); }
   border-radius: var(--radius);
   border: 1px solid var(--rahmen);
 }
+
+/* ---------- Dokumente ---------- */
+
+.quellen { display: flex; flex-direction: column; gap: .6rem; }
+.quelle {
+  border: 1px solid var(--rahmen);
+  border-left: 4px solid var(--akzent);
+  border-radius: 8px;
+  padding: .5rem .7rem;
+  background: var(--flaeche-2);
+}
+.quelle-kopf {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .3rem .7rem;
+  align-items: center;
+  font-size: .85rem;
+  color: var(--text-leise);
+  margin-bottom: .3rem;
+}
+.quelle-nr { font-weight: 700; color: var(--text); }
+.quelle-wert { margin-left: auto; font-variant-numeric: tabular-nums; font-weight: 600; }
+.quelle-text {
+  font-size: .9rem;
+  white-space: pre-wrap;
+  max-height: 11rem;
+  overflow-y: auto;
+  overflow-wrap: anywhere;
+}
+
+.promptansicht, .tabellenvorschau {
+  white-space: pre-wrap;
+  font-size: .8rem;
+  background: var(--grund);
+  border: 1px solid var(--rahmen);
+  border-radius: 8px;
+  padding: .6rem;
+  max-height: 22rem;
+  overflow: auto;
+  margin: .5rem 0 0;
+}
+.tabellenvorschau { max-height: 14rem; }
+
+input[type="file"] { font-size: .9rem; }

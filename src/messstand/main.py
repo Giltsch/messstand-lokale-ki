@@ -17,7 +17,7 @@ from typing import Any, AsyncIterator
 
 import anyio
 import yaml
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, File, HTTPException, UploadFile
 from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 
@@ -33,6 +33,9 @@ from .backends.base import (
 )
 from .loadtest import lasttest, sammelmessung
 from .measure import SPALTEN, Messreihe
+from .rag import ParserFehler, index_bauen, parsen, parser_verfuegbar, zerlegen
+from .rag.parse import PARSER_NAMEN
+from .rag.index import IndexFehler
 
 HOST = "127.0.0.1"
 def _wurzel() -> Path:
@@ -354,6 +357,196 @@ def app_bauen(cfg: konfig.StationConfig) -> FastAPI:
 
         return strom(erzeugen())
 
+    # ------------------------------------------------------------------
+    # Dokumente
+    # ------------------------------------------------------------------
+
+    def dateien_auflisten() -> list[dict]:
+        eintraege: list[dict] = []
+        for ordner, quelle in ((DOCS, "docs"), (DOCS / "upload", "hochgeladen")):
+            if not ordner.is_dir():
+                continue
+            for datei in sorted(ordner.glob("*.pdf")):
+                eintraege.append(
+                    {
+                        "name": datei.name,
+                        "schluessel": (
+                            datei.name if quelle == "docs" else f"upload/{datei.name}"
+                        ),
+                        "quelle": quelle,
+                        "groesse_kb": round(datei.stat().st_size / 1024, 1),
+                    }
+                )
+        return eintraege
+
+    def datei_aufloesen(schluessel: str) -> Path:
+        """Nur Dateien unterhalb von docs/ zulassen."""
+        kandidat = (DOCS / schluessel).resolve()
+        if not str(kandidat).startswith(str(DOCS.resolve())):
+            raise HTTPException(400, "Diese Datei liegt außerhalb des Dokumentordners.")
+        if not kandidat.is_file():
+            raise HTTPException(404, f"Datei nicht gefunden: {schluessel}")
+        return kandidat
+
+    @app.get("/api/dokumente")
+    async def dokumente() -> dict:
+        return {
+            "dateien": dateien_auflisten(),
+            "parser": [
+                {
+                    "id": name,
+                    "label": PARSER_NAMEN.get(name, name),
+                    "verfuegbar": parser_verfuegbar(name),
+                }
+                for name in cfg.parser
+            ],
+            "einbettung": (
+                {
+                    "modell": cfg.embedding.modell,
+                    "online": zustand.online.get("__embedding__", False),
+                    "vorhanden": zustand.modell_vorhanden(
+                        "__embedding__", cfg.embedding.modell
+                    ),
+                }
+                if cfg.embedding
+                else None
+            ),
+            "indizes": [index.kopf() for index in zustand.indizes.values()],
+        }
+
+    @app.post("/api/dokumente/upload")
+    async def dokument_hochladen(datei: UploadFile = File(...)) -> dict:
+        if not (datei.filename or "").lower().endswith(".pdf"):
+            raise HTTPException(400, "Es werden nur PDF-Dateien angenommen.")
+        ziel_ordner = DOCS / "upload"
+        ziel_ordner.mkdir(parents=True, exist_ok=True)
+        name = Path(datei.filename).name
+        ziel = ziel_ordner / name
+        ziel.write_bytes(await datei.read())
+        return {
+            "ok": True,
+            "name": name,
+            "schluessel": f"upload/{name}",
+            "nachricht": f"„{name}“ ist hochgeladen.",
+        }
+
+    @app.post("/api/dokumente/index")
+    async def dokument_indizieren(rumpf: dict) -> dict:
+        if zustand.embedding is None or cfg.embedding is None:
+            raise HTTPException(
+                400,
+                "Für diese Station ist kein Einbettungsmodell konfiguriert. "
+                "Ohne das kann im Dokument nicht gesucht werden.",
+            )
+        schluessel = rumpf.get("datei") or ""
+        parser = rumpf.get("parser") or (cfg.parser[0] if cfg.parser else "naiv")
+        if parser not in cfg.parser:
+            raise HTTPException(400, f"Parser „{parser}“ ist für diese Station nicht vorgesehen.")
+        pfad = datei_aufloesen(schluessel)
+        try:
+            dokument = await asyncio.to_thread(parsen, pfad, parser)
+        except ParserFehler as fehler:
+            raise HTTPException(400, str(fehler)) from fehler
+        abschnitte = zerlegen(dokument.markdown, dokument.seiten)
+        index_id = f"{schluessel}|{parser}"
+        try:
+            index = await index_bauen(
+                zustand.embedding,
+                cfg.embedding.modell,
+                abschnitte,
+                id=index_id,
+                datei=dokument.name,
+                parser=parser,
+                seiten=len(dokument.seiten),
+                markdown=dokument.markdown,
+                parse_dauer_s=dokument.dauer_s,
+            )
+        except IndexFehler as fehler:
+            raise HTTPException(400, str(fehler)) from fehler
+        zustand.indizes[index_id] = index
+        # Speicher begrenzen: nur die letzten acht Indizes behalten.
+        while len(zustand.indizes) > 8:
+            zustand.indizes.pop(next(iter(zustand.indizes)))
+        return index.kopf()
+
+    @app.post("/api/dokumente/frage")
+    async def dokument_frage(rumpf: dict) -> StreamingResponse:
+        index = zustand.indizes.get(rumpf.get("index") or "")
+        if index is None:
+            raise HTTPException(
+                404, "Für diese Datei liegt noch kein Index vor. Bitte zuerst einlesen."
+            )
+        if zustand.embedding is None or cfg.embedding is None:
+            raise HTTPException(400, "Kein Einbettungsmodell konfiguriert.")
+        frage = (rumpf.get("frage") or "").strip()
+        if not frage:
+            raise HTTPException(400, "Es wurde keine Frage geschickt.")
+        backend_id = rumpf.get("backend", "")
+        modell_id = rumpf.get("modell", "")
+        backend, backend_cfg = zustand.backend_oder_fehler(backend_id)
+        modell_cfg = backend_cfg.modell(modell_id)
+        params = params_aus_config(cfg.generierung)
+        params.thinking = bool(rumpf.get("thinking", cfg.generierung.thinking))
+
+        async def erzeugen() -> AsyncIterator[str]:
+            try:
+                treffer = await index.suchen(zustand.embedding, frage, top=4)
+            except Exception as fehler:
+                yield sse(
+                    {
+                        "art": "fehler",
+                        "nachricht": "Die Suche im Dokument ist gescheitert.",
+                        "detail": f"{type(fehler).__name__}: {fehler}",
+                    }
+                )
+                yield sse({"art": "ende"})
+                return
+            yield sse({"art": "quellen", "quellen": [t.dict() for t in treffer]})
+
+            system, nutzer = prompt_bauen(frage, treffer)
+            yield sse({"art": "prompt", "system": system, "nutzer": nutzer})
+            nachrichten = [
+                {"role": "system", "content": system},
+                {"role": "user", "content": nutzer},
+            ]
+            async with aclosing(
+                backend.chat_stream(modell_id, nachrichten, params)
+            ) as ereignisse:
+                async for ereignis in ereignisse:
+                    if isinstance(ereignis, TextEvent):
+                        yield sse({"art": "text", "text": ereignis.text})
+                    elif isinstance(ereignis, DenkEvent):
+                        yield sse({"art": "denken", "text": ereignis.text})
+                    elif isinstance(ereignis, FehlerEvent):
+                        yield sse(
+                            {
+                                "art": "fehler",
+                                "nachricht": ereignis.nachricht,
+                                "detail": ereignis.detail,
+                            }
+                        )
+                    elif isinstance(ereignis, MessungEvent):
+                        zustand.warm.setdefault(backend_id, set()).add(modell_id)
+                        ergebnis = zustand.messreihe.hinzufuegen(
+                            reiter="Dokumente",
+                            backend_id=backend_id,
+                            backend_label=backend_cfg.label,
+                            modell_id=modell_id,
+                            modell_label=modell_cfg.label if modell_cfg else modell_id,
+                            messung=ereignis.messung,
+                            notiz=f"{index.datei}, Parser {index.parser}",
+                        )
+                        yield sse(
+                            {
+                                "art": "messung",
+                                "messung": ereignis.messung.dict(),
+                                "ergebnis": ergebnis.fuer_oberflaeche(),
+                            }
+                        )
+            yield sse({"art": "ende"})
+
+        return strom(erzeugen())
+
     @app.post("/api/lasttest")
     async def lasttest_starten(rumpf: dict) -> StreamingResponse:
         if not cfg.lasttest.erlaubt:
@@ -423,6 +616,32 @@ def app_bauen(cfg: konfig.StationConfig) -> FastAPI:
         return {"ok": True}
 
     return app
+
+
+SYSTEMPROMPT = (
+    "Sie sind ein sachlicher Assistent. Antworten Sie ausschließlich mit "
+    "Informationen aus den unten angegebenen Abschnitten eines Dokuments. "
+    "Wenn die Antwort dort nicht steht, antworten Sie genau: "
+    "Steht nicht in den Unterlagen. Erfinden Sie keine Zahlen. Geben Sie am "
+    "Ende in Klammern die Nummern der Abschnitte an, auf die Sie sich stützen."
+)
+
+
+def prompt_bauen(frage: str, treffer: list) -> tuple[str, str]:
+    """Baut den vollständigen Prompt, den die Oberfläche anzeigen kann."""
+    teile = []
+    for t in treffer:
+        seite = f"Seite {t.abschnitt.seite}" if t.abschnitt.seite else "Seite unbekannt"
+        teile.append(
+            f"[Abschnitt {t.abschnitt.nr}, {seite}, "
+            f"Ähnlichkeit {t.aehnlichkeit:.2f}]\n{t.abschnitt.text}"
+        )
+    nutzer = (
+        "Abschnitte aus dem Dokument:\n\n"
+        + "\n\n".join(teile)
+        + f"\n\nFrage: {frage}"
+    )
+    return SYSTEMPROMPT, nutzer
 
 
 def _de(wert: float | None) -> str:

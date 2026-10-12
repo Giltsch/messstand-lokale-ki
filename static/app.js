@@ -6,6 +6,7 @@ import { store, stationSetzen, bus } from "./store.js";
 import { aufgabeAufbauen } from "./aufgabe.js";
 import { vergleichAufbauen } from "./vergleich.js";
 import { lastAufbauen } from "./last.js";
+import { dokumenteAufbauen } from "./dokumente.js";
 import { ergebnisseAufbauen } from "./ergebnisse.js";
 
 const REITER = [
@@ -17,6 +18,7 @@ const REITER = [
     aufbauen: lastAufbauen,
     aktiv: () => store.station?.lasttest?.erlaubt !== false,
   },
+  { id: "dokumente", titel: "Dokumente", aufbauen: dokumenteAufbauen },
   { id: "ergebnisse", titel: "Ergebnisse", aufbauen: ergebnisseAufbauen },
 ];
 
