@@ -9,33 +9,68 @@ backends:
     label: "Ollama, GGUF (llama.cpp)"
     typ: ollama
     url: http://127.0.0.1:11434
+    # Neben vLLM (25 % des Speichers) bleiben Ollama rund 81 GiB. GPT-OSS 120B
+    # belegt geladen etwa 65 GB. Passt ein Modell nicht mehr hinein, entlaedt
+    # der Messstand vorher das am laengsten nicht benutzte.
+    speicher_budget_gb: 80
     modelle:
-      # „26b" ist ein Alias (16 GB). Station 2 nutzt den ausdrücklichen Tag
-      # gemma4:26b-a4b-it-q4_K_M (18 GB). Für einen Vergleich zwischen den
-      # Stationen hier denselben Tag eintragen.
-      - id: gemma4:26b
-        label: "Gemma 4 26B A4B, MoE"
+      # Dieselben Tags und Beschriftungen wie Station 1 und 2, damit die
+      # Ergebnisse der Stationen direkt nebeneinander passen.
+      - id: gemma4:e2b-it-qat
+        label: "Gemma 4 E2B, QAT, GGUF"
+        architektur: dense
+        parameter_gesamt_mrd: 5
+        parameter_aktiv_mrd: 2
+        groesse_gb: 4.3
+      - id: gemma4:e4b-it-q4_K_M
+        label: "Gemma 4 E4B, 4 Bit (Q4_K_M), GGUF"
+        architektur: dense
+        parameter_gesamt_mrd: 8
+        parameter_aktiv_mrd: 4.5
+        groesse_gb: 6.6
+      - id: gemma4:e4b-it-q8_0
+        label: "Gemma 4 E4B, 8 Bit (Q8_0), GGUF"
+        architektur: dense
+        parameter_gesamt_mrd: 8
+        parameter_aktiv_mrd: 4.5
+        groesse_gb: 9.0
+      - id: gemma4:e4b-it-bf16
+        label: "Gemma 4 E4B, 16 Bit (BF16), GGUF"
+        architektur: dense
+        parameter_gesamt_mrd: 8
+        parameter_aktiv_mrd: 4.5
+        groesse_gb: 16
+      - id: gemma4:26b-a4b-it-q4_K_M
+        label: "Gemma 4 26B A4B, MoE, 4 Bit"
         architektur: moe
         parameter_gesamt_mrd: 26
         parameter_aktiv_mrd: 4
-        groesse_gb: 16
+        groesse_gb: 17
+      - id: gemma4:31b-it-q4_K_M
+        label: "Gemma 4 31B, dense, 4 Bit"
+        architektur: dense
+        parameter_gesamt_mrd: 31
+        parameter_aktiv_mrd: 31
+        groesse_gb: 20
       - id: gpt-oss:120b
         label: "GPT-OSS 120B, MoE (passt auf 32 GB nicht)"
         architektur: moe
         parameter_gesamt_mrd: 120
         parameter_aktiv_mrd: 5.1
         groesse_gb: 65
-  # Modell-IDs für vLLM trägt Peter nach dem Setup ein.
+  # vLLM: nvidia/Gemma-4-26B-A4B-NVFP4, ausgeliefert unter dem Namen unten
+  # (siehe --served-model-name in ../vllm-starten.sh).
   - id: vllm
     label: "vLLM"
     typ: openai
     url: http://127.0.0.1:8000/v1
     modelle:
       - id: google/gemma-4-26b-a4b-it
-        label: "Gemma 4 26B A4B, vLLM"
+        label: "Gemma 4 26B A4B, vLLM, NVFP4"
         architektur: moe
         parameter_gesamt_mrd: 26
         parameter_aktiv_mrd: 4
+        groesse_gb: 19
 
 embedding:
   typ: ollama
@@ -45,12 +80,31 @@ embedding:
 parser: [naiv, schnell, strukturiert]
 
 vergleiche:
+  # Beide 4 Bit, derselbe MoE, nur eine andere Laufzeit.
   - name: "Ollama gegen vLLM"
-    a: { backend: ollama, modell: gemma4:26b }
+    a: { backend: ollama, modell: gemma4:26b-a4b-it-q4_K_M }
     b: { backend: vllm,   modell: google/gemma-4-26b-a4b-it }
+  # Dieselben Paarungen wie auf dem Mac mini. Hier passen beide Seiten
+  # gleichzeitig in den Speicher.
+  - name: "Dense gegen MoE"
+    a: { backend: ollama, modell: gemma4:31b-it-q4_K_M }
+    b: { backend: ollama, modell: gemma4:26b-a4b-it-q4_K_M }
+  - name: "Acht Bit gegen sechzehn Bit"
+    a: { backend: ollama, modell: gemma4:e4b-it-q8_0 }
+    b: { backend: ollama, modell: gemma4:e4b-it-bf16 }
+  - name: "Vier Bit gegen acht Bit"
+    a: { backend: ollama, modell: gemma4:e4b-it-q8_0 }
+    b: { backend: ollama, modell: gemma4:e4b-it-q4_K_M }
+  - name: "Vier Bit gegen sechzehn Bit"
+    a: { backend: ollama, modell: gemma4:e4b-it-bf16 }
+    b: { backend: ollama, modell: gemma4:e4b-it-q4_K_M }
+  # 120 gegen 26 Milliarden Parameter, aber fast gleich viele aktive.
+  - name: "Großer MoE gegen kleinen MoE"
+    a: { backend: ollama, modell: gpt-oss:120b }
+    b: { backend: ollama, modell: gemma4:26b-a4b-it-q4_K_M }
 
 lasttest:
   erlaubt: true
   stufen: [1, 4, 8, 15]
   standard: 15
-  hinweis_parallelitaet: "Ollama läuft hier mit OLLAMA_NUM_PARALLEL=15, vLLM plant Anfragen selbst ein."
+  hinweis_parallelitaet: "Ollama läuft hier mit OLLAMA_NUM_PARALLEL=8, vLLM plant Anfragen selbst ein."
