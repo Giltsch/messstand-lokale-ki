@@ -9,7 +9,16 @@ Das Werkzeug selbst verwaltet keine Modelle und lädt nichts nach.
    - macOS: `brew install uv`
    - Windows: `winget install astral-sh.uv`
    - Linux: `curl -LsSf https://astral.sh/uv/install.sh | sh`
-2. **Repo kopieren** (USB-Stick genügt, es muss nichts geklont werden).
+2. **Repo holen** — entweder klonen:
+
+   ```
+   git clone https://github.com/Giltsch/messstand-lokale-ki.git
+   cd messstand-lokale-ki
+   ```
+
+   oder per USB-Stick kopieren. Am Workshoptag ist der Stick der sicherere
+   Weg: das Werkzeug soll ohne Netz laufen, und die Stationen sind dann
+   womöglich schon getrennt.
 3. **Abhängigkeiten holen**, solange noch Netz da ist:
    ```
    uv sync
