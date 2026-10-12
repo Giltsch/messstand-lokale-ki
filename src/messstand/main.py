@@ -228,7 +228,7 @@ def app_bauen(cfg: konfig.StationConfig) -> FastAPI:
         modell_id = rumpf.get("modell", "")
         backend, _cfg = zustand.backend_oder_fehler(backend_id)
         try:
-            await backend.warmup(modell_id)
+            await backend.warmup(modell_id, params_aus_config(cfg.generierung))
         except Exception as fehler:
             return JSONResponse(
                 status_code=200,

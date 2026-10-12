@@ -337,3 +337,63 @@ button.knopf[disabled] { opacity: .5; cursor: not-allowed; filter: none; }
 .leise { color: var(--text-leise); }
 .klein { font-size: .85rem; }
 .nowrap { white-space: nowrap; }
+
+/* ---------- Vergleichsbalken ---------- */
+
+.balkenreihe { margin-bottom: 1rem; }
+.balken-name { font-weight: 600; font-size: .95rem; margin-bottom: .25rem; }
+.balken-paar { display: flex; flex-direction: column; gap: .3rem; }
+.balken-zeile { display: flex; align-items: center; gap: .6rem; }
+.balken-marke {
+  font-weight: 700;
+  width: 1.3rem;
+  text-align: center;
+  flex: 0 0 auto;
+}
+.balken-bahn {
+  flex: 1 1 auto;
+  height: 1.6rem;
+  background: var(--flaeche-2);
+  border: 1px solid var(--rahmen);
+  border-radius: 6px;
+  overflow: hidden;
+}
+.balken-fuellung {
+  height: 100%;
+  background: var(--a);
+  transition: width .35s ease-out;
+}
+.balken-fuellung.b { background: var(--b); }
+.balken-wert {
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+  font-size: 1.1rem;
+  min-width: 4.5rem;
+  text-align: right;
+}
+.balken-satz { font-size: 1rem; font-weight: 600; color: var(--text); margin-top: .3rem; }
+
+/* ---------- Tabelle ---------- */
+
+.tabellenkarte { overflow-x: auto; }
+table.tabelle { border-collapse: collapse; width: 100%; font-size: .92rem; }
+table.tabelle th, table.tabelle td {
+  border-bottom: 1px solid var(--rahmen);
+  padding: .4rem .55rem;
+  text-align: left;
+  white-space: nowrap;
+}
+table.tabelle th {
+  position: sticky;
+  top: 0;
+  background: var(--flaeche);
+  font-size: .85rem;
+  text-transform: uppercase;
+  letter-spacing: .02em;
+  color: var(--text-leise);
+}
+table.tabelle td.zahl, table.tabelle th.zahl {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+table.tabelle tbody tr:hover { background: var(--flaeche-2); }

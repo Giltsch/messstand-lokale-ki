@@ -93,8 +93,11 @@ class OpenAICompatBackend(HttpBackend):
             return []
         return [m.get("id") for m in daten.get("data", []) if m.get("id")]
 
-    async def warmup(self, model: str) -> None:
-        """Kein Standardendpunkt. Eine kurze Anfrage laedt das Modell."""
+    async def warmup(self, model: str, params: GenParams | None = None) -> None:
+        """Kein Standardendpunkt. Eine kurze Anfrage laedt das Modell.
+
+        Die Kontextlaenge legt bei diesen Servern der Server selbst fest.
+        """
         antwort = await self.client.post(
             f"{self.url}/chat/completions",
             json={

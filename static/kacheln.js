@@ -117,6 +117,11 @@ export class Kacheln {
     if (messung.geschaetzt) {
       teile.push(el("span", { class: "marke geschaetzt", text: "geschätzt" }));
     }
+    if (messung.prefill_tps === null && messung.prompt_tokens === null) {
+      teile.push(
+        el("span", { text: "Lesetempo fehlt: diese Laufzeit meldet keine Eingabe-Token." })
+      );
+    }
     if (messung.denk_tokens) {
       teile.push(
         el("span", { text: `${ganz(messung.denk_tokens)} Denk-Abschnitte herausgefiltert` })

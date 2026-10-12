@@ -68,11 +68,22 @@ class OllamaBackend(HttpBackend):
                     namen.append(name.removesuffix(":latest"))
         return namen
 
-    async def warmup(self, model: str) -> None:
-        """Laedt das Modell und haelt es im Speicher (keep_alive: -1)."""
+    async def warmup(self, model: str, params: GenParams | None = None) -> None:
+        """Laedt das Modell und haelt es im Speicher (keep_alive: -1).
+
+        Die Kontextlaenge muss dieselbe sein wie bei der Messung, sonst laedt
+        Ollama das Modell fuer die Messung erneut und sie zaehlt als kalt.
+        """
+        nutzdaten: dict[str, Any] = {
+            "model": model,
+            "messages": [],
+            "keep_alive": -1,
+        }
+        if params is not None:
+            nutzdaten["options"] = {"num_ctx": params.num_ctx}
         antwort = await self.client.post(
             f"{self.url}/api/chat",
-            json={"model": model, "messages": [], "keep_alive": -1},
+            json=nutzdaten,
             timeout=httpx.Timeout(10.0, read=600.0, connect=5.0),
         )
         antwort.raise_for_status()

@@ -38,6 +38,30 @@ backends:
         parameter_gesamt_mrd: 26
         parameter_aktiv_mrd: 4
 
+  # Dieselbe Ollama-Instanz über die OpenAI-kompatible Schicht.
+  # Dient zum Testen des zweiten Backend-Typs ohne zweiten Dienst.
+  - id: ollama-openai
+    label: "Ollama über OpenAI-Schnittstelle"
+    typ: openai
+    url: http://127.0.0.1:11434/v1
+    modelle:
+      - id: gemma3:4b
+        label: "Gemma 3 4B, OpenAI-Schnittstelle"
+        architektur: dense
+        parameter_gesamt_mrd: 4.3
+        parameter_aktiv_mrd: 4.3
+
+  - id: lmstudio
+    label: "LM Studio"
+    typ: openai
+    url: http://127.0.0.1:1234/v1
+    modelle:
+      - id: hermes-3-llama-3.2-3b
+        label: "Hermes 3 Llama 3.2 3B, LM Studio"
+        architektur: dense
+        parameter_gesamt_mrd: 3.2
+        parameter_aktiv_mrd: 3.2
+
 embedding:
   typ: ollama
   url: http://127.0.0.1:11434
@@ -49,6 +73,12 @@ vergleiche:
   - name: "Klein gegen größer"
     a: { backend: ollama-gguf, modell: gemma3:1b }
     b: { backend: ollama-gguf, modell: gemma3:4b }
+  - name: "Native Schnittstelle gegen OpenAI-Schnittstelle"
+    a: { backend: ollama-gguf,   modell: gemma3:4b }
+    b: { backend: ollama-openai, modell: gemma3:4b }
+  - name: "Ollama gegen LM Studio"
+    a: { backend: ollama-gguf, modell: gemma3:4b }
+    b: { backend: lmstudio,    modell: hermes-3-llama-3.2-3b }
   - name: "Dense gegen MoE"
     a: { backend: ollama-gguf, modell: qwen3:14b }
     b: { backend: ollama-mlx,  modell: gemma4:26b-mlx }
