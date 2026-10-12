@@ -11,12 +11,13 @@ import json
 import sys
 import threading
 import webbrowser
-from contextlib import asynccontextmanager
+from contextlib import aclosing, asynccontextmanager
 from pathlib import Path
 from typing import Any, AsyncIterator
 
+import anyio
 import yaml
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import FastAPI, HTTPException
 from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 
@@ -30,6 +31,7 @@ from .backends.base import (
     MessungEvent,
     TextEvent,
 )
+from .loadtest import lasttest, sammelmessung
 from .measure import SPALTEN, Messreihe
 
 HOST = "127.0.0.1"
@@ -71,8 +73,47 @@ SSE_KOPF = {
 }
 
 
+class EreignisStrom(StreamingResponse):
+    """Server-Sent-Events, die beim Abbruch wirklich aufraeumen.
+
+    Ab ASGI 2.4 horcht Starlette nicht mehr selbst auf "http.disconnect";
+    ein abgebrochener Stream bliebe als haengender Generator liegen und die
+    Laufzeit wuerde weiter rechnen. Das blockiert die naechste Messung, also
+    beendet diese Klasse den Generator ausdruecklich.
+    """
+
+    async def __call__(self, scope, receive, send) -> None:  # type: ignore[override]
+        if scope["type"] != "http":
+            await super().__call__(scope, receive, send)
+            return
+        try:
+            async with anyio.create_task_group() as gruppe:
+
+                async def auf_abbruch_warten() -> None:
+                    while True:
+                        nachricht = await receive()
+                        if nachricht["type"] == "http.disconnect":
+                            break
+                    gruppe.cancel_scope.cancel()
+
+                async def senden() -> None:
+                    try:
+                        await self.stream_response(send)
+                    except OSError:
+                        pass  # Browser ist weg, waehrend geschrieben wurde
+                    gruppe.cancel_scope.cancel()
+
+                gruppe.start_soon(auf_abbruch_warten)
+                gruppe.start_soon(senden)
+        finally:
+            schliessen = getattr(self.body_iterator, "aclose", None)
+            if schliessen is not None:
+                with anyio.CancelScope(shield=True):
+                    await schliessen()
+
+
 def strom(erzeuger: AsyncIterator[str]) -> StreamingResponse:
-    return StreamingResponse(erzeuger, media_type="text/event-stream", headers=SSE_KOPF)
+    return EreignisStrom(erzeuger, media_type="text/event-stream", headers=SSE_KOPF)
 
 
 class Zustand:
@@ -242,7 +283,7 @@ def app_bauen(cfg: konfig.StationConfig) -> FastAPI:
         return {"ok": True, "nachricht": f"Modell '{modell_id}' ist geladen."}
 
     @app.post("/api/chat")
-    async def chat(rumpf: dict, anfrage: Request) -> StreamingResponse:
+    async def chat(rumpf: dict) -> StreamingResponse:
         backend_id = rumpf.get("backend", "")
         modell_id = rumpf.get("modell", "")
         backend, backend_cfg = zustand.backend_oder_fehler(backend_id)
@@ -272,39 +313,91 @@ def app_bauen(cfg: konfig.StationConfig) -> FastAPI:
                     "warm": modell_id in zustand.warm.get(backend_id, set()),
                 }
             )
-            async for ereignis in backend.chat_stream(modell_id, nachrichten, params):
-                if await anfrage.is_disconnected():
-                    break
-                if isinstance(ereignis, TextEvent):
-                    yield sse({"art": "text", "text": ereignis.text})
-                elif isinstance(ereignis, DenkEvent):
-                    yield sse({"art": "denken", "text": ereignis.text})
-                elif isinstance(ereignis, FehlerEvent):
-                    yield sse(
-                        {
-                            "art": "fehler",
-                            "nachricht": ereignis.nachricht,
-                            "detail": ereignis.detail,
-                        }
-                    )
-                elif isinstance(ereignis, MessungEvent):
-                    zustand.warm.setdefault(backend_id, set()).add(modell_id)
-                    ergebnis = zustand.messreihe.hinzufuegen(
-                        reiter=reiter,
-                        backend_id=backend_id,
-                        backend_label=backend_cfg.label,
-                        modell_id=modell_id,
-                        modell_label=modell_cfg.label if modell_cfg else modell_id,
-                        messung=ereignis.messung,
-                        notiz=notiz,
-                    )
-                    yield sse(
-                        {
-                            "art": "messung",
-                            "messung": ereignis.messung.dict(),
-                            "ergebnis": ergebnis.fuer_oberflaeche(),
-                        }
-                    )
+            # aclosing: bricht der Browser ab, wird der Generator sofort
+            # geschlossen und die Verbindung zur Laufzeit beendet. Ohne das
+            # laeuft die Erzeugung dort weiter und blockiert die naechste Messung.
+            async with aclosing(
+                backend.chat_stream(modell_id, nachrichten, params)
+            ) as strom_ereignisse:
+                async for ereignis in strom_ereignisse:
+                    if isinstance(ereignis, TextEvent):
+                        yield sse({"art": "text", "text": ereignis.text})
+                    elif isinstance(ereignis, DenkEvent):
+                        yield sse({"art": "denken", "text": ereignis.text})
+                    elif isinstance(ereignis, FehlerEvent):
+                        yield sse(
+                            {
+                                "art": "fehler",
+                                "nachricht": ereignis.nachricht,
+                                "detail": ereignis.detail,
+                            }
+                        )
+                    elif isinstance(ereignis, MessungEvent):
+                        zustand.warm.setdefault(backend_id, set()).add(modell_id)
+                        ergebnis = zustand.messreihe.hinzufuegen(
+                            reiter=reiter,
+                            backend_id=backend_id,
+                            backend_label=backend_cfg.label,
+                            modell_id=modell_id,
+                            modell_label=modell_cfg.label if modell_cfg else modell_id,
+                            messung=ereignis.messung,
+                            notiz=notiz,
+                        )
+                        yield sse(
+                            {
+                                "art": "messung",
+                                "messung": ereignis.messung.dict(),
+                                "ergebnis": ergebnis.fuer_oberflaeche(),
+                            }
+                        )
+            yield sse({"art": "ende"})
+
+        return strom(erzeugen())
+
+    @app.post("/api/lasttest")
+    async def lasttest_starten(rumpf: dict) -> StreamingResponse:
+        if not cfg.lasttest.erlaubt:
+            raise HTTPException(
+                403, "Der Lasttest ist für diese Station nicht freigegeben."
+            )
+        backend_id = rumpf.get("backend", "")
+        modell_id = rumpf.get("modell", "")
+        backend, backend_cfg = zustand.backend_oder_fehler(backend_id)
+        modell_cfg = backend_cfg.modell(modell_id)
+        prompt = (rumpf.get("prompt") or "").strip()
+        if not prompt:
+            raise HTTPException(400, "Es wurde kein Prompt für den Lasttest geschickt.")
+        try:
+            parallel = int(rumpf.get("parallel") or cfg.lasttest.standard)
+        except (TypeError, ValueError):
+            parallel = cfg.lasttest.standard
+        parallel = max(1, min(parallel, max(cfg.lasttest.stufen)))
+
+        params = params_aus_config(cfg.generierung, im_lasttest=True)
+        params.thinking = bool(rumpf.get("thinking", cfg.generierung.thinking))
+
+        async def erzeugen() -> AsyncIterator[str]:
+            async with aclosing(
+                lasttest(backend, modell_id, prompt, parallel, params)
+            ) as strom_ereignisse:
+                async for ereignis in strom_ereignisse:
+                    if ereignis["art"] == "ergebnis":
+                        zustand.warm.setdefault(backend_id, set()).add(modell_id)
+                        daten = ereignis["ergebnis"]
+                        ergebnis = zustand.messreihe.hinzufuegen(
+                            reiter="Last",
+                            backend_id=backend_id,
+                            backend_label=backend_cfg.label,
+                            modell_id=modell_id,
+                            modell_label=modell_cfg.label if modell_cfg else modell_id,
+                            messung=sammelmessung(daten),
+                            notiz=(
+                                f"{parallel} gleichzeitig, schlechteste Wartezeit "
+                                f"{_de(daten['ttft_schlechtester_s'])} s"
+                            ),
+                        )
+                        ereignis["ergebnis_zeile"] = ergebnis.fuer_oberflaeche()
+                    yield sse(ereignis)
             yield sse({"art": "ende"})
 
         return strom(erzeugen())
@@ -330,6 +423,10 @@ def app_bauen(cfg: konfig.StationConfig) -> FastAPI:
         return {"ok": True}
 
     return app
+
+
+def _de(wert: float | None) -> str:
+    return "–" if wert is None else f"{wert:.1f}".replace(".", ",")
 
 
 def bericht(zustand: Zustand) -> None:

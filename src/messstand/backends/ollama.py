@@ -8,6 +8,7 @@ load_duration; alle in Nanosekunden). Darum ist hier quelle = "server".
 from __future__ import annotations
 
 import json
+from contextlib import aclosing
 from typing import Any, AsyncIterator
 
 import httpx
@@ -123,12 +124,17 @@ class OllamaBackend(HttpBackend):
             versuch_ohne_think = think is None
             fehler_event: FehlerEvent | None = None
             etwas_gesendet = False
-            async for ereignis in self._lauf(model, messages, params, think=think):
-                if isinstance(ereignis, FehlerEvent) and not etwas_gesendet:
-                    fehler_event = ereignis
-                    break
-                etwas_gesendet = True
-                yield ereignis
+            # aclosing: beim Abbruch wird die Verbindung zur Laufzeit sofort
+            # geschlossen, statt erst beim Aufraeumen durch den Speicherverwalter.
+            async with aclosing(
+                self._lauf(model, messages, params, think=think)
+            ) as ereignisse:
+                async for ereignis in ereignisse:
+                    if isinstance(ereignis, FehlerEvent) and not etwas_gesendet:
+                        fehler_event = ereignis
+                        break
+                    etwas_gesendet = True
+                    yield ereignis
             if fehler_event is None:
                 return
             if versuch_ohne_think or "think" not in fehler_event.detail.lower():

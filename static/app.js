@@ -5,11 +5,18 @@ import { holen } from "./api.js";
 import { store, stationSetzen, bus } from "./store.js";
 import { aufgabeAufbauen } from "./aufgabe.js";
 import { vergleichAufbauen } from "./vergleich.js";
+import { lastAufbauen } from "./last.js";
 import { ergebnisseAufbauen } from "./ergebnisse.js";
 
 const REITER = [
   { id: "aufgabe", titel: "Aufgabe", aufbauen: aufgabeAufbauen },
   { id: "vergleich", titel: "Vergleich", aufbauen: vergleichAufbauen },
+  {
+    id: "last",
+    titel: "Last",
+    aufbauen: lastAufbauen,
+    aktiv: () => store.station?.lasttest?.erlaubt !== false,
+  },
   { id: "ergebnisse", titel: "Ergebnisse", aufbauen: ergebnisseAufbauen },
 ];
 

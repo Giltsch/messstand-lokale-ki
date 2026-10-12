@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import json
 import re
+from contextlib import aclosing
 from typing import Any, AsyncIterator
 
 import httpx
@@ -139,14 +140,15 @@ class OpenAICompatBackend(HttpBackend):
         for mit_kwargs in (not params.thinking, False):
             fehler_event: FehlerEvent | None = None
             etwas_gesendet = False
-            async for ereignis in self._lauf(
-                model, messages, params, mit_template_kwargs=mit_kwargs
-            ):
-                if isinstance(ereignis, FehlerEvent) and not etwas_gesendet:
-                    fehler_event = ereignis
-                    break
-                etwas_gesendet = True
-                yield ereignis
+            async with aclosing(
+                self._lauf(model, messages, params, mit_template_kwargs=mit_kwargs)
+            ) as ereignisse:
+                async for ereignis in ereignisse:
+                    if isinstance(ereignis, FehlerEvent) and not etwas_gesendet:
+                        fehler_event = ereignis
+                        break
+                    etwas_gesendet = True
+                    yield ereignis
             if fehler_event is None:
                 return
             if not mit_kwargs:

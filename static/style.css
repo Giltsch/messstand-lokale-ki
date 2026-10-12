@@ -397,3 +397,49 @@ table.tabelle td.zahl, table.tabelle th.zahl {
   font-variant-numeric: tabular-nums;
 }
 table.tabelle tbody tr:hover { background: var(--flaeche-2); }
+
+/* ---------- Lastbahnen ---------- */
+
+.bahnen { display: flex; flex-direction: column; gap: .35rem; }
+.bahn { display: flex; align-items: center; gap: .6rem; }
+.bahn-nr {
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+  width: 1.8rem;
+  text-align: right;
+  color: var(--text-leise);
+  flex: 0 0 auto;
+}
+.bahn-bahn {
+  flex: 1 1 auto;
+  height: 1.5rem;
+  background: var(--flaeche-2);
+  border: 1px solid var(--rahmen);
+  border-radius: 6px;
+  overflow: hidden;
+}
+.bahn-fuellung {
+  height: 100%;
+  width: 0;
+  background: var(--akzent);
+  transition: width .15s linear;
+}
+.bahn-fuellung.fertig { background: var(--gut); }
+.bahn-fuellung.fehler { background: var(--schlecht); }
+.bahn-wert {
+  font-size: .9rem;
+  color: var(--text-leise);
+  min-width: 16rem;
+  font-variant-numeric: tabular-nums;
+}
+@media (max-width: 900px) { .bahn-wert { min-width: 8rem; font-size: .8rem; } }
+
+.lastsatz {
+  font-size: 1.35rem;
+  font-weight: 700;
+  margin: .8rem 0 .4rem;
+  padding: .6rem .9rem;
+  background: var(--akzent-leise);
+  border-radius: var(--radius);
+  border: 1px solid var(--rahmen);
+}
