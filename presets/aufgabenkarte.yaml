@@ -1,0 +1,6 @@
+teil1:
+  titel: "Zusammenfassen"
+  prompt: "Fassen Sie die folgende Kundenanfrage in drei Stichpunkten zusammen.\n\n{text}"
+teil2:
+  titel: "Antwort entwerfen"
+  prompt: "Schreiben Sie einen höflichen Antwortentwurf auf die folgende Kundenanfrage. Weisen Sie darauf hin, dass ein Besichtigungstermin frühestens in vier Wochen möglich ist.\n\n{text}"

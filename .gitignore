@@ -1,0 +1,7 @@
+results/*.csv
+__pycache__/
+*.py[cod]
+.venv/
+.DS_Store
+.uv-cache/
+docs/upload/

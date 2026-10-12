@@ -1,0 +1,45 @@
+station:
+  name: "Station 1: Der Alltagsrechner"
+  geraet: "Windows-11-Laptop, x86, nur CPU"
+  speicher_gb: 16
+  bandbreite_gbs: null
+
+backends:
+  - id: ollama
+    label: "Ollama, GGUF (llama.cpp)"
+    typ: ollama
+    url: http://127.0.0.1:11434
+    modelle:
+      - id: gemma4:e2b-it-qat
+        label: "Gemma 4 E2B, QAT, GGUF"
+        architektur: dense
+        parameter_gesamt_mrd: 5
+        parameter_aktiv_mrd: 2
+  - id: lmstudio
+    label: "LM Studio"
+    typ: openai
+    url: http://127.0.0.1:1234/v1
+    modelle:
+      - id: gemma4-e2b-it
+        label: "Gemma 4 E2B, LM Studio"
+        architektur: dense
+        parameter_gesamt_mrd: 5
+        parameter_aktiv_mrd: 2
+
+embedding:
+  typ: ollama
+  url: http://127.0.0.1:11434
+  modell: embeddinggemma
+
+parser: [naiv, schnell]
+
+vergleiche:
+  - name: "Ollama gegen LM Studio"
+    a: { backend: ollama,   modell: gemma4:e2b-it-qat }
+    b: { backend: lmstudio, modell: gemma4-e2b-it }
+
+lasttest:
+  erlaubt: true
+  stufen: [1, 4]
+  standard: 1
+  hinweis_parallelitaet: "Nur CPU. Mehr als eine Anfrage gleichzeitig wird hier deutlich langsamer."

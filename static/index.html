@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="de" data-theme="hell">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Messstand: lokale KI vergleichen</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <header class="kopf">
+    <div class="kopf-oben">
+      <span class="station-name" id="station-name">Messstand</span>
+      <div class="kopf-daten" id="kopf-daten"></div>
+    </div>
+    <div class="kopf-unten">
+      <div class="punkte" id="status-punkte"></div>
+      <span class="lokal">
+        Läuft lokal auf diesem Gerät
+        <span class="netz" id="netz-status"></span>
+      </span>
+      <div class="kopf-werkzeuge">
+        <button class="knopf leise klein" type="button" id="theme-knopf">Dunkles Thema</button>
+      </div>
+    </div>
+  </header>
+
+  <nav class="reiter" id="reiterleiste" role="tablist" aria-label="Bereiche"></nav>
+
+  <main id="blaetter"></main>
+
+  <script type="module" src="/static/app.js"></script>
+</body>
+</html>

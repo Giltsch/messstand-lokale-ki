@@ -1,0 +1,58 @@
+station:
+  name: "Station 2: Der kleine Dauerläufer"
+  geraet: "Mac mini, M4, 32 GB"
+  speicher_gb: 32
+  bandbreite_gbs: 120
+
+backends:
+  - id: ollama-gguf
+    label: "Ollama, GGUF (llama.cpp)"
+    typ: ollama
+    url: http://127.0.0.1:11434
+    modelle:
+      - id: gemma4:e4b-it-q4_K_M
+        label: "Gemma 4 E4B, 4 Bit, GGUF"
+        architektur: dense
+        parameter_gesamt_mrd: 8
+        parameter_aktiv_mrd: 4.5
+      - id: gemma4:26b
+        label: "Gemma 4 26B A4B, MoE"
+        architektur: moe
+        parameter_gesamt_mrd: 26
+        parameter_aktiv_mrd: 4
+      - id: gemma4:31b-it-q4_K_M
+        label: "Gemma 4 31B, dense"
+        architektur: dense
+        parameter_gesamt_mrd: 31
+        parameter_aktiv_mrd: 31
+  - id: ollama-mlx
+    label: "Ollama, MLX"
+    typ: ollama
+    url: http://127.0.0.1:11434
+    modelle:
+      - id: gemma4:e4b-mlx
+        label: "Gemma 4 E4B, 4 Bit, MLX"
+        architektur: dense
+        parameter_gesamt_mrd: 8
+        parameter_aktiv_mrd: 4.5
+
+embedding:
+  typ: ollama
+  url: http://127.0.0.1:11434
+  modell: embeddinggemma
+
+parser: [naiv, schnell, strukturiert]
+
+vergleiche:
+  - name: "Gleiches Modell, anderer Unterbau"
+    a: { backend: ollama-gguf, modell: gemma4:e4b-it-q4_K_M }
+    b: { backend: ollama-mlx,  modell: gemma4:e4b-mlx }
+  - name: "Dense gegen MoE"
+    a: { backend: ollama-gguf, modell: gemma4:31b-it-q4_K_M }
+    b: { backend: ollama-gguf, modell: gemma4:26b }
+
+lasttest:
+  erlaubt: true
+  stufen: [1, 4, 8]
+  standard: 4
+  hinweis_parallelitaet: "Ollama läuft hier mit OLLAMA_NUM_PARALLEL=4."

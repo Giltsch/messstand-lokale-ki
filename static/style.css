@@ -1,0 +1,339 @@
+/* Messstand. Beamer-taugliches Grundlayout: grosse Schrift, hoher Kontrast.
+   Keine Webfonts, keine externen Ressourcen. */
+
+:root {
+  --grund: #f7f8fa;
+  --flaeche: #ffffff;
+  --flaeche-2: #eef1f5;
+  --rahmen: #c3cad6;
+  --rahmen-stark: #8c97a8;
+  --text: #11161f;
+  --text-leise: #4d586b;
+  --akzent: #15467f;
+  --akzent-text: #ffffff;
+  --akzent-leise: #e3ecf8;
+  --gut: #0d7038;
+  --schlecht: #a3131d;
+  --warn: #8a5000;
+  --a: #15467f;
+  --b: #7a2d86;
+  --radius: 10px;
+  --schatten: 0 1px 2px rgba(17, 22, 31, .08), 0 4px 12px rgba(17, 22, 31, .06);
+  color-scheme: light;
+}
+
+[data-theme="dunkel"] {
+  --grund: #11151c;
+  --flaeche: #1a202a;
+  --flaeche-2: #232b37;
+  --rahmen: #3b4554;
+  --rahmen-stark: #5e6b7e;
+  --text: #f2f5f9;
+  --text-leise: #aab6c6;
+  --akzent: #7fb3ff;
+  --akzent-text: #0c1017;
+  --akzent-leise: #1e2a3d;
+  --gut: #4fd483;
+  --schlecht: #ff8a8a;
+  --warn: #ffc368;
+  --a: #7fb3ff;
+  --b: #d99bea;
+  --schatten: none;
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+
+html { font-size: 18px; }
+
+body {
+  margin: 0;
+  background: var(--grund);
+  color: var(--text);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans",
+    Ubuntu, Cantarell, "Helvetica Neue", Arial, sans-serif;
+  line-height: 1.5;
+}
+
+h1, h2, h3 { line-height: 1.2; margin: 0 0 .4em; }
+h1 { font-size: 1.5rem; }
+h2 { font-size: 1.3rem; }
+h3 { font-size: 1.05rem; }
+p { margin: 0 0 .7em; }
+
+/* ---------- Kopfzeile ---------- */
+
+.kopf {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background: var(--flaeche);
+  border-bottom: 2px solid var(--rahmen);
+  padding: .7rem 1.2rem .4rem;
+}
+
+.kopf-oben {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: .4rem 1.2rem;
+}
+
+.station-name { font-size: 1.45rem; font-weight: 700; }
+
+.kopf-daten {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .3rem 1.1rem;
+  color: var(--text-leise);
+  font-size: .95rem;
+  margin-left: auto;
+}
+.kopf-daten b { color: var(--text); font-weight: 600; }
+
+.kopf-unten {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: .5rem .9rem;
+  margin-top: .5rem;
+}
+
+.punkte { display: flex; flex-wrap: wrap; gap: .4rem .8rem; }
+
+.punkt {
+  display: inline-flex;
+  align-items: center;
+  gap: .4rem;
+  font-size: .9rem;
+  padding: .15rem .55rem .15rem .4rem;
+  border: 1px solid var(--rahmen);
+  border-radius: 999px;
+  background: var(--flaeche-2);
+}
+.punkt::before {
+  content: "";
+  width: .72rem; height: .72rem;
+  border-radius: 50%;
+  background: var(--rahmen-stark);
+  flex: 0 0 auto;
+}
+.punkt.online::before { background: var(--gut); }
+.punkt.offline::before { background: var(--schlecht); }
+
+.lokal {
+  display: inline-flex;
+  align-items: center;
+  gap: .45rem;
+  font-size: .9rem;
+  font-weight: 600;
+  padding: .2rem .7rem;
+  border-radius: 999px;
+  background: var(--akzent-leise);
+  color: var(--text);
+  border: 1px solid var(--rahmen);
+}
+.netz { font-weight: 400; color: var(--text-leise); }
+.netz.offline { color: var(--gut); font-weight: 600; }
+
+.kopf-werkzeuge { margin-left: auto; display: flex; gap: .5rem; align-items: center; }
+
+/* ---------- Reiter ---------- */
+
+.reiter {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .3rem;
+  padding: .6rem 1.2rem 0;
+  border-bottom: 1px solid var(--rahmen);
+  background: var(--flaeche);
+}
+
+.reiter button {
+  font: inherit;
+  font-size: 1.05rem;
+  font-weight: 600;
+  padding: .55rem 1.1rem;
+  border: 1px solid transparent;
+  border-bottom: none;
+  border-radius: var(--radius) var(--radius) 0 0;
+  background: transparent;
+  color: var(--text-leise);
+  cursor: pointer;
+}
+.reiter button:hover { background: var(--flaeche-2); color: var(--text); }
+.reiter button[aria-selected="true"] {
+  background: var(--grund);
+  color: var(--text);
+  border-color: var(--rahmen);
+  box-shadow: inset 0 3px 0 var(--akzent);
+}
+.reiter button[disabled] { opacity: .45; cursor: not-allowed; }
+
+main { padding: 1.1rem 1.2rem 3rem; max-width: 1700px; }
+.blatt[hidden] { display: none !important; }
+
+/* ---------- Bausteine ---------- */
+
+.karte {
+  background: var(--flaeche);
+  border: 1px solid var(--rahmen);
+  border-radius: var(--radius);
+  padding: 1rem 1.1rem;
+  box-shadow: var(--schatten);
+  margin-bottom: 1rem;
+}
+
+.zeile { display: flex; flex-wrap: wrap; gap: .8rem; align-items: flex-end; }
+.spalten-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+@media (max-width: 1100px) { .spalten-2 { grid-template-columns: 1fr; } }
+
+label.feld { display: flex; flex-direction: column; gap: .25rem; font-size: .9rem; color: var(--text-leise); font-weight: 600; }
+
+select, input[type="text"], input[type="number"], textarea {
+  font: inherit;
+  font-size: 1rem;
+  color: var(--text);
+  background: var(--flaeche);
+  border: 1px solid var(--rahmen-stark);
+  border-radius: 8px;
+  padding: .45rem .6rem;
+  max-width: 100%;
+}
+textarea { min-height: 9rem; resize: vertical; line-height: 1.45; width: 100%; }
+select:disabled, option:disabled { color: var(--text-leise); }
+
+button.knopf {
+  font: inherit;
+  font-size: 1rem;
+  font-weight: 700;
+  padding: .55rem 1.2rem;
+  border-radius: 8px;
+  border: 1px solid var(--akzent);
+  background: var(--akzent);
+  color: var(--akzent-text);
+  cursor: pointer;
+}
+button.knopf:hover { filter: brightness(1.12); }
+button.knopf.leise {
+  background: var(--flaeche);
+  color: var(--text);
+  border-color: var(--rahmen-stark);
+}
+button.knopf.klein { font-size: .9rem; padding: .35rem .8rem; font-weight: 600; }
+button.knopf[disabled] { opacity: .5; cursor: not-allowed; filter: none; }
+
+.bedingungen {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .3rem .9rem;
+  font-size: .85rem;
+  color: var(--text-leise);
+  margin-top: .2rem;
+}
+.bedingungen span { white-space: nowrap; }
+.bedingungen b { color: var(--text); font-weight: 600; }
+
+/* ---------- Messwert-Kacheln ---------- */
+
+.kacheln {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: .8rem;
+  margin: .2rem 0 .6rem;
+}
+@media (max-width: 1000px) { .kacheln { grid-template-columns: repeat(2, 1fr); } }
+
+.kachel {
+  background: var(--flaeche);
+  border: 2px solid var(--rahmen);
+  border-radius: var(--radius);
+  padding: .7rem .9rem .8rem;
+}
+.kachel .name { font-size: .95rem; font-weight: 600; color: var(--text-leise); }
+.kachel .wert {
+  font-size: 2.7rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -.02em;
+  line-height: 1.05;
+}
+.kachel .einheit { font-size: 1.1rem; font-weight: 600; color: var(--text-leise); margin-left: .25rem; }
+.kachel.laeuft { border-color: var(--akzent); }
+
+.hinweiszeile {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .3rem .9rem;
+  font-size: .85rem;
+  color: var(--text-leise);
+}
+
+.marke {
+  display: inline-block;
+  font-size: .78rem;
+  font-weight: 700;
+  padding: .1rem .5rem;
+  border-radius: 999px;
+  border: 1px solid var(--rahmen-stark);
+}
+.marke.kalt { color: var(--warn); border-color: var(--warn); }
+.marke.warm { color: var(--gut); border-color: var(--gut); }
+.marke.geschaetzt { color: var(--warn); border-color: var(--warn); }
+
+/* ---------- Antworttext ---------- */
+
+.antwort {
+  background: var(--flaeche-2);
+  border: 1px solid var(--rahmen);
+  border-radius: var(--radius);
+  padding: .8rem 1rem;
+  min-height: 7rem;
+  white-space: pre-wrap;
+  font-size: 1.05rem;
+  overflow-wrap: anywhere;
+}
+.antwort:empty::before { content: "Noch keine Antwort."; color: var(--text-leise); }
+.antwort.laeuft::after {
+  content: "▋";
+  animation: blinken 1s steps(2) infinite;
+  color: var(--akzent);
+}
+@keyframes blinken { 50% { opacity: 0; } }
+
+.denken {
+  margin-top: .6rem;
+  font-size: .9rem;
+  color: var(--text-leise);
+  border-left: 3px solid var(--warn);
+  padding-left: .7rem;
+  white-space: pre-wrap;
+}
+
+/* ---------- Meldungen ---------- */
+
+.meldung {
+  border-radius: var(--radius);
+  padding: .6rem .9rem;
+  margin: .6rem 0;
+  border: 1px solid var(--rahmen);
+  background: var(--flaeche-2);
+  font-size: .95rem;
+}
+.meldung.fehler { border-color: var(--schlecht); background: color-mix(in srgb, var(--schlecht) 10%, var(--flaeche)); }
+.meldung.gut { border-color: var(--gut); background: color-mix(in srgb, var(--gut) 10%, var(--flaeche)); }
+.meldung details { margin-top: .3rem; }
+.meldung summary { cursor: pointer; font-weight: 600; }
+.meldung pre {
+  white-space: pre-wrap;
+  font-size: .82rem;
+  background: var(--grund);
+  padding: .5rem;
+  border-radius: 6px;
+  overflow-x: auto;
+  margin: .4rem 0 0;
+}
+
+.leise { color: var(--text-leise); }
+.klein { font-size: .85rem; }
+.nowrap { white-space: nowrap; }

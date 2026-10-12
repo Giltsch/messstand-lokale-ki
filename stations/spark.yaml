@@ -1,0 +1,51 @@
+station:
+  name: "Station 3: Die Maschine für viele"
+  geraet: "DGX Spark, 128 GB, DGX OS (ARM64)"
+  speicher_gb: 128
+  bandbreite_gbs: 273
+
+backends:
+  - id: ollama
+    label: "Ollama, GGUF (llama.cpp)"
+    typ: ollama
+    url: http://127.0.0.1:11434
+    modelle:
+      - id: gemma4:26b
+        label: "Gemma 4 26B A4B, MoE"
+        architektur: moe
+        parameter_gesamt_mrd: 26
+        parameter_aktiv_mrd: 4
+      - id: gpt-oss:120b
+        label: "GPT-OSS 120B, MoE (passt auf 32 GB nicht)"
+        architektur: moe
+        parameter_gesamt_mrd: 120
+        parameter_aktiv_mrd: 5.1
+  # Modell-IDs für vLLM trägt Peter nach dem Setup ein.
+  - id: vllm
+    label: "vLLM"
+    typ: openai
+    url: http://127.0.0.1:8000/v1
+    modelle:
+      - id: google/gemma-4-26b-a4b-it
+        label: "Gemma 4 26B A4B, vLLM"
+        architektur: moe
+        parameter_gesamt_mrd: 26
+        parameter_aktiv_mrd: 4
+
+embedding:
+  typ: ollama
+  url: http://127.0.0.1:11434
+  modell: embeddinggemma
+
+parser: [naiv, schnell, strukturiert]
+
+vergleiche:
+  - name: "Ollama gegen vLLM"
+    a: { backend: ollama, modell: gemma4:26b }
+    b: { backend: vllm,   modell: google/gemma-4-26b-a4b-it }
+
+lasttest:
+  erlaubt: true
+  stufen: [1, 4, 8, 15]
+  standard: 15
+  hinweis_parallelitaet: "Ollama läuft hier mit OLLAMA_NUM_PARALLEL=15, vLLM plant Anfragen selbst ein."

@@ -1,0 +1,60 @@
+# Entwicklungsstation: nur Modelle, die auf Peters Entwicklungsrechner liegen.
+# Nicht für den Workshop gedacht, sondern zum Testen des Werkzeugs.
+station:
+  name: "Entwicklungsstation"
+  geraet: "Entwicklungsrechner, Apple Silicon"
+  speicher_gb: 32
+  bandbreite_gbs: 120
+
+backends:
+  - id: ollama-gguf
+    label: "Ollama, GGUF (llama.cpp)"
+    typ: ollama
+    url: http://127.0.0.1:11434
+    modelle:
+      - id: gemma3:1b
+        label: "Gemma 3 1B, 4 Bit, GGUF"
+        architektur: dense
+        parameter_gesamt_mrd: 1
+        parameter_aktiv_mrd: 1
+      - id: gemma3:4b
+        label: "Gemma 3 4B, 4 Bit, GGUF"
+        architektur: dense
+        parameter_gesamt_mrd: 4.3
+        parameter_aktiv_mrd: 4.3
+      - id: qwen3:14b
+        label: "Qwen 3 14B, 4 Bit, GGUF"
+        architektur: dense
+        parameter_gesamt_mrd: 14.8
+        parameter_aktiv_mrd: 14.8
+  - id: ollama-mlx
+    label: "Ollama, MLX"
+    typ: ollama
+    url: http://127.0.0.1:11434
+    modelle:
+      - id: gemma4:26b-mlx
+        label: "Gemma 4 26B A4B, MLX"
+        architektur: moe
+        parameter_gesamt_mrd: 26
+        parameter_aktiv_mrd: 4
+
+embedding:
+  typ: ollama
+  url: http://127.0.0.1:11434
+  modell: nomic-embed-text
+
+parser: [naiv, schnell]
+
+vergleiche:
+  - name: "Klein gegen größer"
+    a: { backend: ollama-gguf, modell: gemma3:1b }
+    b: { backend: ollama-gguf, modell: gemma3:4b }
+  - name: "Dense gegen MoE"
+    a: { backend: ollama-gguf, modell: qwen3:14b }
+    b: { backend: ollama-mlx,  modell: gemma4:26b-mlx }
+
+lasttest:
+  erlaubt: true
+  stufen: [1, 4, 8]
+  standard: 4
+  hinweis_parallelitaet: "Entwicklungsrechner, OLLAMA_NUM_PARALLEL nicht gesetzt (Ollama entscheidet selbst)."
