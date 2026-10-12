@@ -29,6 +29,9 @@ export function vergleichAufbauen(wurzel) {
   const seiten = { a: seiteBauen("A"), b: seiteBauen("B") };
   let steuerung = null;
   let messungen = { a: null, b: null };
+  // Merkt sich, ob die beiden gewaehlten Modelle gleichzeitig in den Speicher
+  // passen. Der Kalt-Hinweis braucht das, um keinen unmoeglichen Rat zu geben.
+  let passtNicht = false;
 
   const starten = el("button", { class: "knopf", type: "button", text: "Vergleich starten" });
   const abbrechen = el("button", { class: "knopf leise", type: "button", text: "Abbrechen", disabled: true });
@@ -45,10 +48,20 @@ export function vergleichAufbauen(wurzel) {
 
   function vorlagenZeichnen() {
     const liste = store.station?.vergleiche ?? [];
+    // Die getroffene Auswahl muss den Neuaufbau ueberleben. Der Statusabruf
+    // alle 15 Sekunden loest ihn aus, und ein Vergleich loest ihn selbst mit
+    // aus: er macht ein kaltes Modell warm, damit aendert sich der Status.
+    // Ohne diese Sicherung sprang die Auswahl mitten im Lauf auf den ersten
+    // Vergleich zurueck und Seite B hat ein anderes Modell gemessen.
+    const vorher = vorlagen.value;
     vorlagen.replaceChildren(
       ...liste.map((v, i) => el("option", { value: String(i), text: v.name })),
       el("option", { value: "frei", text: "Freie Auswahl" })
     );
+    if (vorher && [...vorlagen.options].some((o) => o.value === vorher)) {
+      vorlagen.value = vorher;
+      return;
+    }
     if (liste.length) vorlageUebernehmen();
   }
 
@@ -65,24 +78,46 @@ export function vergleichAufbauen(wurzel) {
   //  1. Verschieden viele aktive Parameter: halb so viele, etwa doppeltes Tempo.
   //  2. Gleich viele aktive Parameter, aber andere Quantisierung: dann zählt
   //     die Dateigröße, denn je Token wird das ganze Modell einmal gelesen.
+  // Passen beide Modelle zusammen in den Arbeitsspeicher? Wenn nicht, draengt
+  // Seite B die Seite A hinaus. Dann kann man nicht beide warm halten, und der
+  // uebliche Rat "beide vorladen und wiederholen" fuehrt in die Sackgasse.
+  // Reserve fuer Betriebssystem und Kontext: ein Sechstel des Speichers.
+  function platzProblem(a, b) {
+    const gb = store.station?.station?.speicher_gb;
+    if (!gb || !a?.groesse_gb || !b?.groesse_gb) return null;
+    const zusammen = a.groesse_gb + b.groesse_gb;
+    if (zusammen <= gb * 0.85) return null;
+    return (
+      `Beide Modelle zusammen belegen ${zahl(zusammen, 1)} GB, die Station hat ` +
+      `${gb} GB. Sie passen nicht gleichzeitig hinein: das zweite Modell ` +
+      "verdrängt das erste. Jede Seite wird darum einzeln geladen, und die " +
+      "Ladezeit erscheint als „kalt gestartet“. Das ist hier normal und kein Fehler."
+    );
+  }
+
   function vorhersageZeichnen() {
     const wahlA = auswahlA.wert();
     const wahlB = auswahlB.wert();
     const a = modellVon(wahlA.backend, wahlA.modell);
     const b = modellVon(wahlB.backend, wahlB.modell);
     const schaetzung = schaetzen(a, b);
-    if (!schaetzung) {
+    const platz = platzProblem(a, b);
+    passtNicht = Boolean(platz);
+    if (!schaetzung && !platz) {
       vorhersage.hidden = true;
       vorhersage.dataset.erwartet = "";
       return;
     }
     vorhersage.hidden = false;
-    vorhersage.replaceChildren(
-      el("div", { html: `<b>Vorhersage:</b> ${schaetzung.satz}` }),
-      el("div", { class: "klein leise", text: schaetzung.hinweis })
-    );
-    vorhersage.dataset.erwartet = String(schaetzung.faktor);
-    vorhersage.dataset.schneller = schaetzung.schneller;
+    const teile = [];
+    if (schaetzung) {
+      teile.push(el("div", { html: `<b>Vorhersage:</b> ${schaetzung.satz}` }));
+      teile.push(el("div", { class: "klein leise", text: schaetzung.hinweis }));
+    }
+    if (platz) teile.push(el("div", { class: "klein", text: platz }));
+    vorhersage.replaceChildren(...teile);
+    vorhersage.dataset.erwartet = schaetzung ? String(schaetzung.faktor) : "";
+    vorhersage.dataset.schneller = schaetzung ? schaetzung.schneller : "";
   }
 
   function schaetzen(a, b) {
@@ -119,8 +154,10 @@ export function vergleichAufbauen(wurzel) {
           `(${zahl(groesseA, 1)} gegen ${zahl(groesseB, 1)} GB). Für jedes Token muss das ganze Modell ` +
           `einmal gelesen werden, Erwartung beim Schreibtempo also grob Faktor <b>${faktor(wert)}</b> für ${schneller}.`,
         hinweis:
-          "Hier begrenzt die Speicherbandbreite, nicht die Rechenleistung. " +
-          "Darum folgt das Tempo der Dateigröße und nicht der Parameterzahl.",
+          "Hier begrenzt meist die Speicherbandbreite, nicht die Rechenleistung. " +
+          "Darum folgt das Tempo der Dateigröße und nicht der Parameterzahl. " +
+          "Bei sehr starker Quantisierung kann das kippen: das Auspacken der " +
+          "4-Bit-Gewichte kostet selbst Rechenzeit.",
       };
     }
     return null;
@@ -245,8 +282,13 @@ export function vergleichAufbauen(wurzel) {
     meldung(meldungsfeld, {
       nachricht:
         `Seite ${kalte.join(" und ")} wurde kalt gestartet: die Ladezeit steckt in ` +
-        "der Gesamtzeit. Für einen fairen Vergleich beide Modelle vorladen und " +
-        "den Vergleich wiederholen.",
+        "der Gesamtzeit. " +
+        (passtNicht
+          ? "Beide Modelle passen nicht gleichzeitig in den Speicher, warm " +
+            "bekommen Sie hier also nur eine Seite. Vergleichen Sie darum " +
+            "Schreibtempo und Lesetempo, nicht die Gesamtzeit."
+          : "Für einen fairen Vergleich beide Modelle vorladen und " +
+            "den Vergleich wiederholen."),
     });
   }
 
@@ -268,7 +310,14 @@ export function vergleichAufbauen(wurzel) {
         satz = `${besserB ? "B" : "A"} ${m.satz.replace("{f}", faktor(f))}`;
         if (m.schluessel === "decode_tps" && !vorhersage.hidden && vorhersage.dataset.erwartet) {
           const erwartet = Number(vorhersage.dataset.erwartet);
-          satz += ` — vorhergesagt war grob ${faktor(erwartet)} für ${vorhersage.dataset.schneller}`;
+          const gesagt = vorhersage.dataset.schneller;
+          const gemessen = besserB ? "B" : "A";
+          satz += ` — vorhergesagt war grob ${faktor(erwartet)} für ${gesagt}`;
+          // Liegt die Vorhersage auf der falschen Seite, muss das dastehen.
+          // Sonst liest sich die Zeile wie ein Rechenfehler statt wie ein Befund.
+          if (gesagt !== gemessen) {
+            satz += `. Vorne liegt aber ${gemessen}: die Erwartung stimmt hier nicht`;
+          }
         }
       }
       return el("div", { class: "balkenreihe" }, [

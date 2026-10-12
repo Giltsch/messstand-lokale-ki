@@ -37,7 +37,7 @@ backends:
         architektur: moe
         parameter_gesamt_mrd: 26
         parameter_aktiv_mrd: 4
-        groesse_gb: 18
+        groesse_gb: 17
       - id: gemma4:31b-it-q4_K_M
         label: "Gemma 4 31B, dense, 4 Bit"
         architektur: dense
@@ -60,7 +60,7 @@ backends:
         architektur: moe
         parameter_gesamt_mrd: 26
         parameter_aktiv_mrd: 4
-        groesse_gb: 18
+        groesse_gb: 17
 
 embedding:
   typ: ollama
@@ -76,19 +76,31 @@ vergleiche:
   - name: "Gleiches Modell, anderer Unterbau"
     a: { backend: ollama-gguf, modell: gemma4:e4b-it-q8_0 }
     b: { backend: ollama-mlx,  modell: gemma4:e4b-mlx }
-  # 20 GB dense gegen 18 GB MoE: aehnlich viel Speicher, aber 31 gegen
+  # 20 GB dense gegen 17 GB MoE: aehnlich viel Speicher, aber 31 gegen
   # 4 Milliarden aktive Parameter.
   - name: "Dense gegen MoE"
     a: { backend: ollama-gguf, modell: gemma4:31b-it-q4_K_M }
     b: { backend: ollama-gguf, modell: gemma4:26b-a4b-it-q4_K_M }
   # Gleiche Gewichte, drei Praezisionen. Zeigt die Speicherbandbreite.
+  # Gemessen am 12.10.2026: 19,8 gegen 11,1 Token/s, also Faktor 1,79 bei
+  # 1,78 erwartet. Das ist der saubere Beleg fuer die Bandbreiten-Regel.
+  - name: "Acht Bit gegen sechzehn Bit"
+    a: { backend: ollama-gguf, modell: gemma4:e4b-it-q8_0 }
+    b: { backend: ollama-gguf, modell: gemma4:e4b-it-bf16 }
+  # Hier bleibt die Regel deutlich hinter sich zurueck. Mit dem Prompt der
+  # Aufgabenkarte gemessen: 22,8 gegen 19,4 Token/s, also Faktor 1,18 bei
+  # 1,36 erwartet. Mit einem kurzen Prompt kippt es sogar: dann liegt 8 Bit
+  # mit 19,8 gegen 17,8 vorn. Die beiden liegen so eng beieinander, dass der
+  # Prompt die Reihenfolge entscheidet. Absichtlich drin: der Messstand soll
+  # auch zeigen, wo eine Faustregel endet. Beide Seiten brauchen denselben
+  # Prompt, sonst ist der Vergleich wertlos.
   - name: "Vier Bit gegen acht Bit"
     a: { backend: ollama-gguf, modell: gemma4:e4b-it-q8_0 }
     b: { backend: ollama-gguf, modell: gemma4:e4b-it-q4_K_M }
   - name: "Vier Bit gegen sechzehn Bit"
     a: { backend: ollama-gguf, modell: gemma4:e4b-it-bf16 }
     b: { backend: ollama-gguf, modell: gemma4:e4b-it-q4_K_M }
-  # Beide 18 GB, derselbe MoE, nur ein anderer Unterbau.
+  # Beide 17 GB, derselbe MoE, nur ein anderer Unterbau.
   - name: "MLX gegen GGUF beim MoE"
     a: { backend: ollama-gguf, modell: gemma4:26b-a4b-it-q4_K_M }
     b: { backend: ollama-mlx,  modell: gemma4:26b-mlx }
