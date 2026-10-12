@@ -154,7 +154,8 @@ export function aufgabeAufbauen(wurzel) {
     if (karte.teil1) knopf1.textContent = `Teil 1: ${karte.teil1.titel}`;
     if (karte.teil2) knopf2.textContent = `Teil 2: ${karte.teil2.titel}`;
     bedingungenZeichnen();
-    if (denkschalter.indeterminate === false && !denkschalter.dataset.gesetzt) {
+    // Standard aus der Konfiguration, danach entscheidet die Bedienung.
+    if (!denkschalter.dataset.gesetzt) {
       denkschalter.checked = !!store.station.generierung?.thinking;
       denkschalter.dataset.gesetzt = "1";
     }

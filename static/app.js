@@ -130,7 +130,19 @@ export function reiterAnmelden(eintrag) {
   if (!REITER.find((r) => r.id === eintrag.id)) REITER.push(eintrag);
 }
 
-// ---------- Theme ----------
+// ---------- Schriftgröße und Theme ----------
+
+// Beamer: Grundgröße bleibt mindestens 18 px, größer ist für hintere Reihen.
+function schriftSetzen(groesse) {
+  document.documentElement.style.fontSize = `${groesse}px`;
+  document.getElementById("schrift-knopf").value = String(groesse);
+  try {
+    localStorage.setItem("messstand-schrift", String(groesse));
+  } catch {
+    /* privater Modus */
+  }
+}
+
 
 function themeSetzen(name) {
   document.documentElement.dataset.theme = name;
@@ -172,6 +184,16 @@ async function start() {
     /* ignorieren */
   }
   themeSetzen(gemerkt || "hell");
+  let schrift = null;
+  try {
+    schrift = localStorage.getItem("messstand-schrift");
+  } catch {
+    /* ignorieren */
+  }
+  schriftSetzen(Number(schrift) >= 18 ? Number(schrift) : 18);
+  document
+    .getElementById("schrift-knopf")
+    .addEventListener("change", (ereignis) => schriftSetzen(Number(ereignis.target.value)));
   document.getElementById("theme-knopf").addEventListener("click", () => {
     themeSetzen(document.documentElement.dataset.theme === "dunkel" ? "hell" : "dunkel");
   });

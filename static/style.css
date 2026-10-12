@@ -487,3 +487,13 @@ table.tabelle tbody tr:hover { background: var(--flaeche-2); }
 .tabellenvorschau { max-height: 14rem; }
 
 input[type="file"] { font-size: .9rem; }
+
+/* ---------- Kopfzeilen-Werkzeuge ---------- */
+
+.schriftwahl {
+  flex-direction: row;
+  align-items: center;
+  gap: .35rem;
+  font-size: .85rem;
+}
+.schriftwahl select { padding: .2rem .4rem; font-size: .85rem; }

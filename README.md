@@ -10,13 +10,51 @@ im Flugmodus.
 ## Start
 
 ```
+uv sync                                        # einmal, solange Netz da ist
 uv run messstand --config stations/macmini.yaml
 ```
+
+Oder per Doppelklick: `start.command` (macOS), `start.bat` (Windows),
+`./start.sh` (Linux). Jedes Skript nimmt eine andere Station als Argument,
+zum Beispiel `./start.sh stations/macmini.yaml`.
 
 Weitere Stationen: `stations/laptop.yaml`, `stations/spark.yaml`.
 `stations/dev.yaml` ist nur zum Entwickeln gedacht.
 
 Optionen: `--port` (Standard 8765), `--no-browser`.
+
+Strukturierter Parser (Docling) ist eine optionale Abhängigkeit:
+
+```
+uv sync --extra docling
+```
+
+## Die fünf Reiter
+
+| Reiter | Zeigt |
+|---|---|
+| Aufgabe | Die Aufgabenkarte des Workshops, Antwort im Stream, vier Messwert-Kacheln |
+| Vergleich | Gleicher Prompt nacheinander an zwei Modelle, Balken mit Faktor, Vorhersage aus den aktiven Parametern |
+| Last | Mehrere Anfragen gleichzeitig, eine Bahn je Anfrage, Gesamtdurchsatz und Wartezeiten |
+| Dokumente | PDF einlesen, fragen, die vier gefundenen Abschnitte und den vollständigen Prompt sehen |
+| Ergebnisse | Alle Messungen der Sitzung, CSV für den Flipchart |
+
+## Messwerte
+
+| Anzeige | Bedeutung |
+|---|---|
+| Zeit bis zum ersten Wort | Vom Absenden bis zum ersten sichtbaren Token, hier gemessen |
+| Lesetempo | Eingabe-Token pro Sekunde |
+| Schreibtempo | Ausgabe-Token pro Sekunde, ohne die Zeit für die Eingabe |
+| Gesamtzeit | Wanduhrzeit der ganzen Anfrage |
+
+Ollama meldet eigene Zähler, dann steht unter den Kacheln „Tempowerte vom
+Server gemeldet". OpenAI-kompatible Server tun das nicht, dort wird hier
+gemessen. Fehlt die Token-Zählung ganz, erscheint die Marke „geschätzt".
+
+Für alle Läufe gelten dieselben Bedingungen: Temperatur 0,2, Seed 42,
+höchstens 300 Token Antwort, Kontext 8192 Token, Denkschritte aus. Sie
+stehen in der Oberfläche und in `generierung` der Stations-YAML.
 
 ## Aufbau
 
@@ -27,5 +65,14 @@ Optionen: `--port` (Standard 8765), `--no-browser`.
 | `stations/` | Eine YAML-Datei pro Station. Alle Unterschiede stehen hier. |
 | `presets/` | Aufgabenkarte und Beispieltext des Workshops |
 | `results/` | CSV-Ausgaben (nicht im Repo) |
+| `tools/` | Hilfsskripte: Offline-Prüfung, Platzhalter-PDF erzeugen |
 
-Mehr zum Aufbau jeder Station steht in `docs/aufbau.md` (folgt mit M5).
+## Prüfen
+
+```
+uv run python tools/offline_pruefen.py
+```
+
+Prüft die Oberfläche auf externe Verweise und den Server auf lokale Bindung.
+
+Mehr zum Aufbau jeder Station steht in [docs/aufbau.md](docs/aufbau.md).
