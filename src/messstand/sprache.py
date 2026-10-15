@@ -105,7 +105,7 @@ def router_bauen(cfg: SpracheCfg) -> APIRouter:
         except httpx.HTTPError as fehler:
             raise HTTPException(
                 502, f"Die Spracherkennung unter {basis} antwortet nicht ({type(fehler).__name__}). "
-                "Starten mit: ./spark-modus.sh sprache"
+                "Starten mit: spark/spark-modus.sh sprache"
             ) from fehler
         rechen_s = time.perf_counter() - start
         if antwort.status_code != 200:

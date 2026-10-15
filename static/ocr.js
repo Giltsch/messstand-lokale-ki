@@ -111,7 +111,7 @@ export function ocrAufbauen(wurzel) {
         statuszeile.replaceChildren(
           el("span", { class: "punkt offline", text: "OCR-Werkzeug nicht erreichbar" }),
           el("span", { text: s.nachricht || "" }),
-          el("span", { text: "Starten mit: ./spark-modus.sh ocr" })
+          el("span", { text: "Starten mit: spark/spark-modus.sh ocr" })
         );
         return false;
       }

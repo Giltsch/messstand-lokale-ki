@@ -59,7 +59,7 @@ backends:
         parameter_aktiv_mrd: 5.1
         groesse_gb: 65
   # vLLM: nvidia/Gemma-4-26B-A4B-NVFP4, ausgeliefert unter dem Namen unten
-  # (siehe --served-model-name in ../vllm-starten.sh).
+  # (siehe --served-model-name in spark/vllm-starten.sh).
   - id: vllm
     label: "vLLM"
     typ: openai
@@ -110,7 +110,7 @@ lasttest:
   hinweis_parallelitaet: "Ollama läuft hier mit OLLAMA_NUM_PARALLEL=8, vLLM plant Anfragen selbst ein."
 
 # Eigenes OCR-Werkzeug (KILaw/LawAI), läuft als systemd-Dienst lawai-app.
-# Nur im Modus „ocr“ von ../spark-modus.sh erreichbar. Gezeigt werden nur
+# Nur im Modus „ocr“ von spark/spark-modus.sh erreichbar. Gezeigt werden nur
 # diese Beispiele und Dateien, die über den Messstand hochgeladen wurden;
 # andere (interne) Dokumente im OCR-Werkzeug bleiben unsichtbar.
 ocr:
@@ -138,12 +138,12 @@ ocr:
       titel: "A3-Doppelseite"
       zeigt: "Seite größer als das Modell sie sehen kann, wird zerlegt und wieder zusammengesetzt"
 
-# Spracherkennung für den Reiter „Sprache“: ../whisper-starten.sh (Port 8002),
-# am einfachsten über ../spark-modus.sh sprache (Whisper plus GPT-OSS 120B).
+# Spracherkennung für den Reiter „Sprache“: spark/whisper-starten.sh (Port 8002),
+# am einfachsten über spark/spark-modus.sh sprache (Whisper plus GPT-OSS 120B).
 sprache:
   url: http://127.0.0.1:8002/v1
   modell: openai/whisper-large-v3-turbo
   label: "Whisper large-v3-turbo (OpenAI, MIT-Lizenz)"
   sprache: de
-  # Sprecher unterscheiden: ../sprecher_dienst.py (NVIDIA TitaNet, Port 8003)
+  # Sprecher unterscheiden: spark/sprecher_dienst.py (NVIDIA TitaNet, Port 8003)
   sprecher_url: http://127.0.0.1:8003

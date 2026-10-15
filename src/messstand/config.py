@@ -99,7 +99,7 @@ class SpracheCfg(BaseModel):
     label: str = "Whisper large-v3-turbo"
     sprache: str = "de"
     api_key: str | None = None
-    # Stimmabdruecke fuer die Sprecherzuordnung (../sprecher_dienst.py), optional.
+    # Stimmabdruecke fuer die Sprecherzuordnung (spark/sprecher_dienst.py), optional.
     sprecher_url: str | None = None
 
 

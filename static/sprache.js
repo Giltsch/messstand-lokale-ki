@@ -137,7 +137,7 @@ export function spracheAufbauen(wurzel) {
           class: `punkt ${s.sprecher ? "online" : "offline"}`,
           text: s.sprecher ? "Sprecher unterscheiden: NVIDIA TitaNet" : "Sprecher unterscheiden: aus",
         }),
-        s.bereit ? el("span", { text: "läuft auf diesem Gerät" }) : el("span", { text: "Starten mit: ./spark-modus.sh sprache" })
+        s.bereit ? el("span", { text: "läuft auf diesem Gerät" }) : el("span", { text: "Starten mit: spark/spark-modus.sh sprache" })
       );
     } catch (fehler) {
       statuszeile.replaceChildren(el("span", { class: "punkt offline", text: String(fehler) }));
@@ -468,6 +468,7 @@ function auswertungBauen(mitschriftHolen) {
   const los = el("button", { class: "knopf", type: "button", text: "Notizen, Aufgaben und Termine" });
   const abbrechen = el("button", { class: "knopf leise", type: "button", text: "Abbrechen", disabled: true });
   const roh = el("div", { class: "antwort" });
+  const denken = el("div", { class: "denken" });
   const notizen = el("div", { class: "ocr-dokument sp-notizen", hidden: true });
   const termine = el("div", { class: "sp-termine" });
   const zahlen = el("div", { class: "hinweiszeile" });
@@ -542,8 +543,17 @@ function auswertungBauen(mitschriftHolen) {
           max_tokens: 2000,
         },
         (e) => {
-          if (e.art === "text") {
-            roh.textContent += e.text;
+          if (e.art === "denken") {
+            // Grosse Modelle denken erst nach; das soll man auf dem Beamer sehen.
+            if (!denken.parentNode) roh.replaceChildren(el("div", { class: "klein leise", text: "Das Modell denkt nach …" }), denken);
+            denken.textContent += e.text;
+            roh.scrollTop = roh.scrollHeight;
+          } else if (e.art === "text") {
+            if (denken.parentNode) {
+              roh.replaceChildren();
+              denken.textContent = "";
+            }
+            roh.append(e.text);
             roh.scrollTop = roh.scrollHeight;
           } else if (e.art === "fehler") roh.textContent += `\n[${e.nachricht}]`;
           else if (e.art === "messung") {
@@ -559,6 +569,7 @@ function auswertungBauen(mitschriftHolen) {
         },
         steuerung.signal
       );
+      denken.textContent = "";
       await ergebnisZeigen(roh.textContent);
     } catch (fehler) {
       if (fehler.name !== "AbortError") roh.textContent += `\n[${fehler}]`;
