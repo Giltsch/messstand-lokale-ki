@@ -108,3 +108,42 @@ lasttest:
   stufen: [1, 4, 8, 15]
   standard: 15
   hinweis_parallelitaet: "Ollama läuft hier mit OLLAMA_NUM_PARALLEL=8, vLLM plant Anfragen selbst ein."
+
+# Eigenes OCR-Werkzeug (KILaw/LawAI), läuft als systemd-Dienst lawai-app.
+# Nur im Modus „ocr“ von ../spark-modus.sh erreichbar. Gezeigt werden nur
+# diese Beispiele und Dateien, die über den Messstand hochgeladen wurden;
+# andere (interne) Dokumente im OCR-Werkzeug bleiben unsichtbar.
+ocr:
+  url: http://127.0.0.1:8080
+  passwort_datei: ~/.config/lawai/env
+  beispiele:
+    - datei: "827-9999-903 rev c.pdf"
+      titel: "Technische Zeichnung"
+      zeigt: "Großformat in Kacheln, Notizen und Schriftfeld sicher, Maßsymbole an der Grenze"
+    - datei: "handschrift-scads-032.jpg"
+      titel: "Handschrift, gut lesbar"
+      zeigt: "Zweitleser springt ein, liest fast alles, gibt aber trotzdem nicht allein frei"
+      quelle: "ScaDS.AI German Full-Page Handwriting Dataset, Seite 032 (Burghardt, Nestler), CC BY 4.0, doi:10.5281/zenodo.18283705"
+    - datei: "handschrift-scads-066.jpg"
+      titel: "Handschrift, schwierig"
+      zeigt: "Hier liegt die Grenze: Krakelschrift, viele uneinige Stellen"
+      quelle: "ScaDS.AI German Full-Page Handwriting Dataset, Seite 066 (Burghardt, Nestler), CC BY 4.0, doi:10.5281/zenodo.18283705"
+    - datei: "Kuendigung_Weber_Scan.png"
+      titel: "Gescannter Brief"
+      zeigt: "Normalfall: wird ohne Mensch freigegeben, Fristen und Daten erkannt"
+    - datei: "aktenstapel.pdf"
+      titel: "Stapel mit 21 Seiten"
+      zeigt: "Durchsatz: viele Seiten gleichzeitig"
+    - datei: "lf_a3_spread.png"
+      titel: "A3-Doppelseite"
+      zeigt: "Seite größer als das Modell sie sehen kann, wird zerlegt und wieder zusammengesetzt"
+
+# Spracherkennung für den Reiter „Sprache“: ../whisper-starten.sh (Port 8002),
+# am einfachsten über ../spark-modus.sh sprache (Whisper plus GPT-OSS 120B).
+sprache:
+  url: http://127.0.0.1:8002/v1
+  modell: openai/whisper-large-v3-turbo
+  label: "Whisper large-v3-turbo (OpenAI, MIT-Lizenz)"
+  sprache: de
+  # Sprecher unterscheiden: ../sprecher_dienst.py (NVIDIA TitaNet, Port 8003)
+  sprecher_url: http://127.0.0.1:8003

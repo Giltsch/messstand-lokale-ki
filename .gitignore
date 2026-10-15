@@ -5,3 +5,4 @@ __pycache__/
 .DS_Store
 .uv-cache/
 docs/upload/
+results/ocr-hochgeladen.json

@@ -69,6 +69,40 @@ class LasttestCfg(BaseModel):
     hinweis_parallelitaet: str | None = None
 
 
+class OcrBeispiel(BaseModel):
+    """Ein Dokument, das im OCR-Reiter als Schnellwahl erscheint."""
+
+    datei: str  # Dateiname, wie das OCR-Werkzeug ihn kennt
+    titel: str
+    zeigt: str = ""
+    quelle: str = ""  # Herkunft und Lizenz, erscheint unter dem Scan
+
+
+class OcrCfg(BaseModel):
+    """Verbindung zum eigenen OCR-Werkzeug (LawAI), optional."""
+
+    url: str = "http://127.0.0.1:8080"
+    # Passwort fuer HTTP Basic. Vorrang hat die Umgebungsvariable
+    # LAWAI_PASSWORD, sonst die Zeile LAWAI_PASSWORD=... in dieser Datei.
+    passwort_datei: str | None = None
+    beispiele: list[OcrBeispiel] = Field(default_factory=list)
+    # Am Beamer nur die Beispiele und hier hochgeladene Dateien zeigen, nie
+    # den Rest des OCR-Werkzeugs (dort koennen interne Dokumente liegen).
+    nur_freigegebene: bool = True
+
+
+class SpracheCfg(BaseModel):
+    """Spracherkennung fuer den Reiter „Sprache", OpenAI-kompatibel (vLLM)."""
+
+    url: str = "http://127.0.0.1:8002/v1"
+    modell: str = "openai/whisper-large-v3-turbo"
+    label: str = "Whisper large-v3-turbo"
+    sprache: str = "de"
+    api_key: str | None = None
+    # Stimmabdruecke fuer die Sprecherzuordnung (../sprecher_dienst.py), optional.
+    sprecher_url: str | None = None
+
+
 class GenerierungCfg(BaseModel):
     """Faire Vergleichsbedingungen. Gilt fuer alle Backends gleich."""
 
@@ -92,6 +126,8 @@ class StationConfig(BaseModel):
     vergleiche: list[VergleichCfg] = Field(default_factory=list)
     lasttest: LasttestCfg = Field(default_factory=LasttestCfg)
     generierung: GenerierungCfg = Field(default_factory=GenerierungCfg)
+    ocr: OcrCfg | None = None
+    sprache: SpracheCfg | None = None
 
     # nicht aus der YAML, sondern vom Laden gesetzt
     quelle: str = ""

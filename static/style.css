@@ -497,3 +497,97 @@ input[type="file"] { font-size: .9rem; }
   font-size: .85rem;
 }
 .schriftwahl select { padding: .2rem .4rem; font-size: .85rem; }
+
+/* ---------- OCR ---------- */
+
+.ocr-beispiele { margin: .6rem 0; align-items: stretch; }
+.ocr-beispiel { display: flex; flex-direction: column; align-items: flex-start; text-align: left; max-width: 17rem; gap: .1rem; }
+.ocr-seiten { margin-top: .6rem; gap: .35rem; }
+.ocr-seiten .gut { border-bottom: 3px solid var(--gut); }
+.ocr-seiten .warn { border-bottom: 3px solid var(--warn); }
+.ocr-seiten .schlecht { border-bottom: 3px solid var(--schlecht); }
+
+.ocr-band { font-weight: 600; padding: .05rem .5rem; border-radius: 999px; border: 1px solid var(--rahmen); font-size: .85rem; }
+.ocr-band.gut { color: var(--gut); border-color: var(--gut); }
+.ocr-band.warn { color: var(--warn); border-color: var(--warn); }
+.ocr-band.schlecht { color: var(--schlecht); border-color: var(--schlecht); }
+
+/* Vertrauensfarben: dieselben im Text und auf dem Scan */
+:root {
+  --v-beleg: rgba(13, 112, 56, .16);
+  --v-verschoben: rgba(21, 70, 127, .18);
+  --v-uneinig: rgba(214, 150, 0, .38);
+  --v-ohne: rgba(200, 20, 30, .30);
+  --v-aus: rgba(122, 45, 134, .30);
+}
+[data-theme="dunkel"] {
+  --v-beleg: rgba(79, 212, 131, .14);
+  --v-verschoben: rgba(127, 179, 255, .22);
+  --v-uneinig: rgba(255, 195, 104, .38);
+  --v-ohne: rgba(255, 110, 110, .38);
+  --v-aus: rgba(217, 155, 234, .36);
+}
+
+.ocr-text { max-height: 34rem; overflow-y: auto; line-height: 1.7; font-size: .95rem; }
+.ocr-span { border-radius: 3px; padding: 0 .1rem; }
+.ocr-span.verified { background: transparent; }
+.ocr-span.verified_displaced { background: var(--v-verschoben); }
+.ocr-span.low_agreement { background: var(--v-uneinig); }
+.ocr-span.suspect_insertion { background: var(--v-ohne); text-decoration: underline wavy var(--schlecht); }
+.ocr-span.suspect_omission { background: var(--v-aus); }
+.hinweiszeile .ocr-span.verified { background: var(--v-beleg); }
+.ocr-span.aktiv { outline: 2px solid var(--text); }
+
+.ocr-bildrahmen { position: relative; border: 1px solid var(--rahmen); background: #fff; }
+.ocr-bild { display: block; width: 100%; height: auto; }
+.ocr-kasten { position: absolute; border: 2px solid transparent; border-radius: 2px; }
+.ocr-kasten.verified { display: none; }
+.ocr-bildrahmen.belegte .ocr-kasten.verified { display: block; background: var(--v-beleg); border-color: transparent; }
+.ocr-kasten.verified_displaced { background: var(--v-verschoben); }
+.ocr-kasten.low_agreement { background: var(--v-uneinig); border-color: rgba(160, 110, 0, .8); }
+.ocr-kasten.suspect_insertion { background: var(--v-ohne); border-color: rgba(163, 19, 29, .9); }
+.ocr-kasten.suspect_omission { background: var(--v-aus); border-color: rgba(122, 45, 134, .9); }
+.ocr-kasten.aktiv { display: block; outline: 3px solid #000; box-shadow: 0 0 0 5px #ffd400; z-index: 2; }
+
+.ocr-ablauf { margin: 0 0 .5rem; padding-left: 1.3rem; }
+.ocr-ablauf li { margin-bottom: .35rem; }
+.ocr-grenze { border-left: 4px solid var(--akzent); padding: .3rem 0 .3rem .8rem; margin-bottom: .7rem; display: grid; gap: .3rem; }
+.ocr-tabelle { width: 100%; border-collapse: collapse; font-size: .95rem; }
+.ocr-tabelle th, .ocr-tabelle td { text-align: left; padding: .45rem .6rem; border-bottom: 1px solid var(--rahmen); vertical-align: top; }
+.ocr-tabelle th { color: var(--text-leise); }
+.ocr-bild { cursor: zoom-in; }
+
+/* Gerendertes Layout des OCR, Vertrauensmarken als <mark class="..."> */
+.ocr-dokument { line-height: 1.55; }
+.ocr-dokument h1 { font-size: 1.25rem; margin-top: .6rem; }
+.ocr-dokument h2 { font-size: 1.12rem; margin-top: .6rem; }
+.ocr-dokument h3, .ocr-dokument h4 { font-size: 1rem; margin-top: .5rem; }
+.ocr-dokument table { border-collapse: collapse; margin: .5rem 0; font-size: .88rem; }
+.ocr-dokument th, .ocr-dokument td { border: 1px solid var(--rahmen); padding: .2rem .45rem; vertical-align: top; }
+.ocr-dokument mark { color: inherit; border-radius: 3px; padding: 0 .1rem; background: var(--v-uneinig); }
+.ocr-dokument mark.low-agreement { background: var(--v-uneinig); }
+.ocr-dokument mark.suspect-insertion { background: var(--v-ohne); text-decoration: underline wavy var(--schlecht); }
+.ocr-dokument mark.displaced { background: var(--v-verschoben); }
+.ocr-dokument mark.suspect-omission, .ocr-dokument mark.omission { background: var(--v-aus); }
+
+/* ---------- Sprache ---------- */
+
+.sp-pegelfeld { display: flex; flex-direction: column; gap: .25rem; font-size: .9rem; color: var(--text-leise); font-weight: 600; min-width: 14rem; }
+.sp-pegel { height: 1.1rem; border: 1px solid var(--rahmen); border-radius: 999px; background: var(--flaeche-2); overflow: hidden; margin-bottom: .45rem; }
+.sp-pegel-fuellung { height: 100%; width: 0; background: var(--rahmen-stark); transition: width .08s linear; }
+.sp-pegel.laut .sp-pegel-fuellung { background: var(--gut); }
+.sp-uhr { font-size: 1.6rem; font-weight: 700; font-variant-numeric: tabular-nums; align-self: center; min-width: 4rem; }
+.sp-mitschrift { width: 100%; font-size: 1.05rem; line-height: 1.55; }
+.sp-vorlesen { margin-top: .8rem; }
+.sp-vorlesen summary { cursor: pointer; font-weight: 600; }
+.sp-notizen { margin-top: .4rem; }
+.sp-termine { margin-top: .8rem; display: grid; gap: .5rem; }
+.sp-termin { display: flex; justify-content: space-between; align-items: center; gap: 1rem; border: 1px solid var(--rahmen); border-left: 4px solid var(--akzent); border-radius: var(--radius); padding: .5rem .8rem; }
+.sp-sprecher { margin: .3rem 0 .5rem; align-items: center; gap: .5rem; }
+.sp-name { width: 10rem; font-weight: 600; border-left: 6px solid var(--rahmen-stark) !important; }
+.sp-farbe-0 { border-left-color: #1f6fd1 !important; }
+.sp-farbe-1 { border-left-color: #c2410c !important; }
+.sp-farbe-2 { border-left-color: #15803d !important; }
+.sp-farbe-3 { border-left-color: #9333ea !important; }
+.sp-farbe-4 { border-left-color: #b45309 !important; }
+.sp-farbe-5 { border-left-color: #0f766e !important; }

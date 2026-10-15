@@ -33,6 +33,8 @@ from .backends.base import (
     TextEvent,
 )
 from .loadtest import lasttest, sammelmessung
+from . import ocr as ocr_bruecke
+from . import sprache as sprach_bruecke
 from .measure import SPALTEN, Messreihe
 from .rag import ParserFehler, index_bauen, parsen, parser_verfuegbar, zerlegen
 from .rag.parse import PARSER_NAMEN
@@ -299,6 +301,8 @@ class Zustand:
             "aufgabenkarte": self.aufgabenkarte,
             "beispieltext": self.beispieltext,
             "quelle": Path(self.cfg.quelle).name,
+            "ocr": self.cfg.ocr is not None,
+            "sprache": self.cfg.sprache is not None,
         }
 
     async def aufraeumen(self) -> None:
@@ -337,6 +341,12 @@ def app_bauen(cfg: konfig.StationConfig) -> FastAPI:
 
     app = FastAPI(title="Messstand", version=__version__, lifespan=lebenslauf)
     app.state.zustand = zustand
+
+    if cfg.ocr is not None:
+        app.include_router(ocr_bruecke.router_bauen(cfg.ocr, RESULTS / "ocr-hochgeladen.json"))
+
+    if cfg.sprache is not None:
+        app.include_router(sprach_bruecke.router_bauen(cfg.sprache))
 
     if STATIC.is_dir():
         app.mount("/static", StaticFiles(directory=STATIC), name="static")
@@ -400,6 +410,9 @@ def app_bauen(cfg: konfig.StationConfig) -> FastAPI:
 
         params = params_aus_config(cfg.generierung)
         params.thinking = thinking
+        # Der OCR-Reiter laesst laengere Antworten zu (Tabellen aus Dokumenten).
+        if rumpf.get("max_tokens"):
+            params.max_tokens = max(1, min(int(rumpf["max_tokens"]), 2000))
 
         async def erzeugen() -> AsyncIterator[str]:
             entladen = await zustand.platz_schaffen(backend_id, modell_id)
@@ -692,6 +705,11 @@ def app_bauen(cfg: konfig.StationConfig) -> FastAPI:
             yield sse({"art": "ende"})
 
         return strom(erzeugen())
+
+    @app.post("/api/markdown")
+    async def markdown_rendern(rumpf: dict) -> dict:
+        """Modellantworten als bereinigtes HTML (fuer Protokolle im Reiter Sprache)."""
+        return {"html": ocr_bruecke.markdown_html(str(rumpf.get("text") or ""))}
 
     @app.get("/api/ergebnisse")
     async def ergebnisse() -> dict:
