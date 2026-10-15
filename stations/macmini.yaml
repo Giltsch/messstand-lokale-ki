@@ -110,3 +110,13 @@ lasttest:
   stufen: [1, 4, 8]
   standard: 4
   hinweis_parallelitaet: "Ollama läuft hier mit OLLAMA_NUM_PARALLEL=4."
+
+# Reiter „Sprache“: dasselbe Whisper-Modell wie auf dem Spark, hier über MLX.
+# Einrichten und starten siehe mac/whisper_dienst.py. Ohne Sprecher-Dienst
+# (TitaNet läuft nur auf dem Spark), die Mitschrift kommt dann ohne Sprecher.
+sprache:
+  url: http://127.0.0.1:8002/v1
+  modell: mlx-community/whisper-large-v3-turbo
+  label: "Whisper large-v3-turbo, MLX (OpenAI, MIT-Lizenz)"
+  sprache: de
+  start_hinweis: "uv run python mac/whisper_dienst.py"

@@ -137,7 +137,7 @@ export function spracheAufbauen(wurzel) {
           class: `punkt ${s.sprecher ? "online" : "offline"}`,
           text: s.sprecher ? "Sprecher unterscheiden: NVIDIA TitaNet" : "Sprecher unterscheiden: aus",
         }),
-        s.bereit ? el("span", { text: "läuft auf diesem Gerät" }) : el("span", { text: "Starten mit: spark/spark-modus.sh sprache" })
+        s.bereit ? el("span", { text: "läuft auf diesem Gerät" }) : el("span", { text: `Starten mit: ${s.start_hinweis}` })
       );
     } catch (fehler) {
       statuszeile.replaceChildren(el("span", { class: "punkt offline", text: String(fehler) }));

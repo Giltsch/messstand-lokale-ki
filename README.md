@@ -39,7 +39,7 @@ uv sync --extra docling
 | Dokumente | PDF einlesen, fragen, die vier gefundenen Abschnitte und den vollständigen Prompt sehen |
 | Foto → Daten | Alle Stationen: Handyfoto (Beleg, Lieferschein, Typenschild, Whiteboard) wird zu einer Tabelle. Gegen eine Musterlösung bewertet („26 von 28 Angaben richtig“), dazu ein Stapel mit vielen Fotos gleichzeitig. Braucht ein Bild-fähiges Modell, etwa Gemma 4 |
 | OCR | Nur Spark: eigenes OCR-Werkzeug (LawAI) vorführen. Scan neben gelesenem Text, Vertrauensfarben, Ablauf je Seite, Grenze und Stellschraube, Weitergabe an ein Sprachmodell. Braucht `ocr:` in der Stations-YAML und `spark/spark-modus.sh ocr` |
-| Sprache | Nur Spark: Besprechung über ein USB-Mikrofon mitschreiben (Whisper lokal, Stücke an Sprechpausen), danach Notizen, Aufgaben und Terminvorschläge als .ics von einem Sprachmodell. Braucht `sprache:` in der Stations-YAML und `spark/spark-modus.sh sprache` |
+| Sprache | Spark und Mac mini: Besprechung über ein USB-Mikrofon mitschreiben (Whisper lokal, Stücke an Sprechpausen), danach Notizen, Aufgaben und Terminvorschläge als .ics von einem Sprachmodell. Braucht `sprache:` in der Stations-YAML und `spark/spark-modus.sh sprache`, auf dem Mac `mac/whisper_dienst.py` (ohne Sprecherzuordnung) |
 | Ergebnisse | Alle Messungen der Sitzung, CSV für den Flipchart |
 
 ## Messwerte

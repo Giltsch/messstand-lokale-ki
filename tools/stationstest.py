@@ -61,7 +61,7 @@ def status(c: httpx.Client) -> dict:
     if s.get("sprache"):
         p = c.get("/api/sprache/status").json()
         zeile(f"  [{'ok ' if p.get('bereit') else 'AUS'}] Spracherkennung, Sprecher {'ja' if p.get('sprecher') else 'nein'}"
-              + ("" if p.get("bereit") else "   (spark/spark-modus.sh sprache)"))
+              + ("" if p.get("bereit") else f"   ({p.get('start_hinweis')})"))
     zeile()
     return s
 

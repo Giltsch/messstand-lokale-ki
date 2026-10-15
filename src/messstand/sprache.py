@@ -80,6 +80,7 @@ def router_bauen(cfg: SpracheCfg) -> APIRouter:
             "modell": cfg.modell,
             "label": cfg.label,
             "url": basis,
+            "start_hinweis": cfg.start_hinweis,
         }
 
     @router.post("/erkennen")
@@ -105,7 +106,7 @@ def router_bauen(cfg: SpracheCfg) -> APIRouter:
         except httpx.HTTPError as fehler:
             raise HTTPException(
                 502, f"Die Spracherkennung unter {basis} antwortet nicht ({type(fehler).__name__}). "
-                "Starten mit: spark/spark-modus.sh sprache"
+                f"Starten mit: {cfg.start_hinweis}"
             ) from fehler
         rechen_s = time.perf_counter() - start
         if antwort.status_code != 200:

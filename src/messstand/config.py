@@ -101,6 +101,8 @@ class SpracheCfg(BaseModel):
     api_key: str | None = None
     # Stimmabdruecke fuer die Sprecherzuordnung (spark/sprecher_dienst.py), optional.
     sprecher_url: str | None = None
+    # Erscheint in der Oberflaeche, solange die Erkennung nicht bereit ist.
+    start_hinweis: str = "spark/spark-modus.sh sprache"
 
 
 class GenerierungCfg(BaseModel):

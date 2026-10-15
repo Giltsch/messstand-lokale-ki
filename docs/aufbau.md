@@ -235,7 +235,8 @@ Checkliste je Station:
 ## Neue Reiter auf Mac mini und PC testen
 
 Stand Oktober 2026 sind dazugekommen: „Foto → Daten“ (alle Stationen),
-„OCR“ und „Sprache“ (nur Spark, erscheinen woanders gar nicht).
+„OCR“ (nur Spark) und „Sprache“ (Spark und Mac mini). Wo sie nicht
+konfiguriert sind, erscheinen sie gar nicht.
 
 1. Stand holen, solange Netz da ist:
    ```
@@ -259,6 +260,19 @@ Stand Oktober 2026 sind dazugekommen: „Foto → Daten“ (alle Stationen),
 5. In der Oberfläche den Reiter „Foto → Daten“ einmal von Hand: Beispiel
    anklicken, „Foto lesen“, dann den Stapel mit 4 Fotos.
 
+6. Nur Mac mini, Reiter „Sprache“: Whisper über MLX einrichten, solange Netz
+   da ist (ffmpeg braucht der Messstand zum Umwandeln der Aufnahmen):
+   ```
+   brew install ffmpeg
+   uv sync --extra whisper-mac
+   ONLINE=1 uv run python mac/whisper_dienst.py   # lädt einmal rund 1,6 GB
+   ```
+   Danach startet `uv run python mac/whisper_dienst.py` auch ohne Netz
+   (Port 8002). Gemessen am 15.10.2026: 9,4 s Sprache in rund 1 s, also
+   knapp zehnfach schneller als Echtzeit. Sprecher werden auf dem Mac nicht
+   unterschieden, dafür fehlt TitaNet. Für die Auswertung danach ein
+   Gemma-Modell wählen, GPT-OSS 120B gibt es nur auf dem Spark.
+
 Zum Vergleichen: Die CSV-Dateien aller Stationen nebeneinanderlegen. Auf dem
 Spark gemessen (E2B / E4B / 26B / 31B): 87 bis 89 / 93 / 92 / 94 von 94 Angaben,
 im Mittel rund 3 / 2,4 / 6 / 13 s pro Foto.
@@ -267,7 +281,7 @@ Was auf den anderen Stationen noch offen ist:
 
 | Station | Prüfen |
 |---|---|
-| Mac mini | Ob die MLX-Modelle (`gemma4:e4b-mlx`, `gemma4:26b-mlx`) Bilder annehmen. Der Stationstest fragt Ollama danach und überspringt sie sonst. |
+| Mac mini | Geprüft am 15.10.2026: Die MLX-Modelle (`gemma4:e4b-mlx`, `gemma4:26b-mlx`) können in Ollama keine Bilder, der Stationstest überspringt sie. GGUF: E4B 4/8/16 Bit 91/89/90, 26B 93, 31B 94 von 94; im Mittel 11 / 17 / 28 / 13 / 63 s pro Foto. |
 | Laptop | Ob LM Studio mit `gemma4-e2b-it` Bilder annimmt. Dafür muss in LM Studio die Vision-Variante des Modells geladen sein (mit „mmproj“-Datei). Sonst meldet der Stationstest „kein gültiges JSON“; Ollama mit E2B geht unabhängig davon. Auf der CPU dauert ein Foto deutlich länger, das ist gewollt sichtbar. |
 
 ## Wenn etwas hakt
