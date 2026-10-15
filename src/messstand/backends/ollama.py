@@ -14,6 +14,7 @@ from typing import Any, AsyncIterator
 import httpx
 
 from .base import (
+    nachrichten_ollama,
     Backend,
     DenkEvent,
     FehlerEvent,
@@ -120,7 +121,7 @@ class OllamaBackend(HttpBackend):
     ) -> dict:
         nutzdaten: dict[str, Any] = {
             "model": model,
-            "messages": messages,
+            "messages": nachrichten_ollama(messages),
             "stream": True,
             "keep_alive": -1,
             "options": {

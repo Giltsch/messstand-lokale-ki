@@ -35,6 +35,7 @@ from .backends.base import (
 from .loadtest import lasttest, sammelmessung
 from . import ocr as ocr_bruecke
 from . import sprache as sprach_bruecke
+from . import foto as foto_reiter
 from .measure import SPALTEN, Messreihe
 from .rag import ParserFehler, index_bauen, parsen, parser_verfuegbar, zerlegen
 from .rag.parse import PARSER_NAMEN
@@ -347,6 +348,7 @@ def app_bauen(cfg: konfig.StationConfig) -> FastAPI:
 
     if cfg.sprache is not None:
         app.include_router(sprach_bruecke.router_bauen(cfg.sprache))
+    app.include_router(foto_reiter.router_bauen(zustand, PRESETS))
 
     if STATIC.is_dir():
         app.mount("/static", StaticFiles(directory=STATIC), name="static")

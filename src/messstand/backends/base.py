@@ -80,6 +80,39 @@ class FehlerEvent:
 StreamEvent = TextEvent | DenkEvent | MessungEvent | FehlerEvent
 
 
+# Bilder in Nachrichten: intern {"role", "content", "bilder": [{"b64", "mime"}]}.
+# Jede Laufzeit uebersetzt das in ihr eigenes Format.
+
+
+def nachrichten_ollama(messages: list[dict]) -> list[dict]:
+    """Ollama /api/chat: Bilder als Liste von Base64-Texten im Feld images."""
+    aus = []
+    for m in messages:
+        bilder = m.get("bilder")
+        m = {k: v for k, v in m.items() if k != "bilder"}
+        if bilder:
+            m["images"] = [b["b64"] for b in bilder]
+        aus.append(m)
+    return aus
+
+
+def nachrichten_openai(messages: list[dict]) -> list[dict]:
+    """OpenAI-kompatibel (vLLM, LM Studio): Text und Bilder als Inhaltsteile."""
+    aus = []
+    for m in messages:
+        bilder = m.get("bilder")
+        if not bilder:
+            aus.append({k: v for k, v in m.items() if k != "bilder"})
+            continue
+        teile: list[dict] = [{"type": "text", "text": m.get("content", "")}]
+        teile += [
+            {"type": "image_url", "image_url": {"url": f"data:{b.get('mime', 'image/jpeg')};base64,{b['b64']}"}}
+            for b in bilder
+        ]
+        aus.append({"role": m["role"], "content": teile})
+    return aus
+
+
 @runtime_checkable
 class Backend(Protocol):
     id: str

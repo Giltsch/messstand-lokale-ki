@@ -591,3 +591,15 @@ input[type="file"] { font-size: .9rem; }
 .sp-farbe-3 { border-left-color: #9333ea !important; }
 .sp-farbe-4 { border-left-color: #b45309 !important; }
 .sp-farbe-5 { border-left-color: #0f766e !important; }
+
+/* ---------- Foto → Daten ---------- */
+
+.foto-beispiele { display: flex; flex-wrap: wrap; gap: .7rem; margin: .6rem 0 .9rem; }
+.foto-beispiel { display: flex; flex-direction: column; align-items: center; gap: .3rem; padding: .4rem; border: 2px solid var(--rahmen); border-radius: var(--radius); background: var(--flaeche); cursor: pointer; font: inherit; font-size: .85rem; color: var(--text); }
+.foto-beispiel img { width: 9rem; height: 6.5rem; object-fit: cover; border-radius: 6px; }
+.foto-beispiel.aktiv { border-color: var(--akzent); box-shadow: 0 0 0 2px var(--akzent-leise); }
+.foto-vorschau { width: 100%; height: auto; border-radius: 6px; border: 1px solid var(--rahmen); }
+.foto-tabelle td.foto-ok, .foto-tabelle tr.foto-ok td { background: var(--v-beleg); }
+.foto-tabelle td.foto-falsch, .foto-tabelle tr.foto-falsch td { background: var(--v-ohne); }
+.foto-tabelle tr.foto-extra td { background: var(--v-uneinig); }
+.foto-stapel .bahn-nr { width: 12rem; flex: 0 0 12rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }

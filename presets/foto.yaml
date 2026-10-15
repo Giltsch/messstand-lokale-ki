@@ -1,0 +1,164 @@
+# Reiter „Foto → Daten“: Vorlagen (welche Angaben gelesen werden) und
+# Beispielfotos mit Musterlösung. Die Fotos sind ausgedacht und erzeugt
+# (tools/beispielfotos_erzeugen.py), alle Firmen sind fiktiv.
+#
+# Feldtypen fuer die Bewertung:
+#   text     tolerant verglichen (Gross-/Kleinschreibung, Leerzeichen, kleine Abweichungen)
+#   betrag   Zahl, auf den Cent genau („52,10“ = 52.1)
+#   zahl     Zahl, auf 0,01 genau
+#   datum    Tag und Monat muessen stimmen, das Jahr nur, wenn beide eines haben
+#   uhrzeit  Stunde und Minute
+#   kennung  Nummern und Codes: nur Buchstaben und Ziffern zaehlen, muss exakt stimmen
+
+vorlagen:
+  - id: beleg
+    titel: "Kassenbon oder Rechnung"
+    felder:
+      - { name: haendler, label: "Händler", typ: text }
+      - { name: datum, label: "Datum", typ: datum }
+      - { name: uhrzeit, label: "Uhrzeit", typ: uhrzeit }
+      - { name: summe, label: "Summe brutto (EUR)", typ: betrag }
+      - { name: mwst_satz, label: "MwSt-Satz (%)", typ: zahl }
+      - { name: mwst_betrag, label: "MwSt-Betrag (EUR)", typ: betrag }
+      - { name: zahlart, label: "Zahlart", typ: text }
+      - { name: belegnummer, label: "Bon- oder Rechnungsnummer", typ: kennung }
+    liste:
+      name: positionen
+      label: "Positionen"
+      felder:
+        - { name: bezeichnung, label: "Bezeichnung", typ: text }
+        - { name: menge, label: "Menge", typ: zahl }
+        - { name: einzelpreis, label: "Einzelpreis", typ: betrag }
+        - { name: gesamt, label: "Gesamt", typ: betrag }
+
+  - id: lieferschein
+    titel: "Lieferschein"
+    felder:
+      - { name: lieferant, label: "Lieferant", typ: text }
+      - { name: kunde, label: "Kunde (Firma)", typ: text }
+      - { name: lieferschein_nr, label: "Lieferschein-Nr.", typ: kennung }
+      - { name: datum, label: "Datum", typ: datum }
+      - { name: bestellnummer, label: "Bestellnummer des Kunden", typ: kennung }
+      - { name: kundennummer, label: "Kundennummer", typ: kennung }
+    liste:
+      name: positionen
+      label: "Positionen"
+      felder:
+        - { name: artikelnummer, label: "Artikel-Nr.", typ: kennung }
+        - { name: bezeichnung, label: "Bezeichnung", typ: text }
+        - { name: menge, label: "Menge", typ: zahl }
+        - { name: einheit, label: "Einheit", typ: text }
+
+  - id: typenschild
+    titel: "Typenschild"
+    felder:
+      - { name: hersteller, label: "Hersteller", typ: text }
+      - { name: typ, label: "Typ", typ: kennung }
+      - { name: seriennummer, label: "Seriennummer", typ: kennung }
+      - { name: baujahr, label: "Baujahr", typ: zahl }
+      - { name: leistung_kw, label: "Leistung (kW)", typ: zahl }
+      - { name: spannung_v, label: "Spannung (V)", typ: zahl }
+      - { name: strom_a, label: "Strom (A)", typ: zahl }
+      - { name: frequenz_hz, label: "Frequenz (Hz)", typ: zahl }
+      - { name: drehzahl, label: "Drehzahl (1/min)", typ: zahl }
+      - { name: schutzart, label: "Schutzart (z. B. IP54)", typ: kennung }
+      - { name: gewicht_kg, label: "Gewicht (kg)", typ: zahl }
+      - { name: wirkungsgrad, label: "Wirkungsgrad (%)", typ: zahl }
+
+  - id: protokoll
+    titel: "Whiteboard oder Notizzettel"
+    felder:
+      - { name: titel, label: "Überschrift", typ: text }
+      - { name: datum, label: "Datum", typ: datum }
+      - { name: naechster_termin_datum, label: "Nächster Termin, Datum", typ: datum }
+      - { name: naechster_termin_uhrzeit, label: "Nächster Termin, Uhrzeit", typ: uhrzeit }
+    liste:
+      name: aufgaben
+      label: "Aufgaben"
+      felder:
+        - { name: was, label: "Was", typ: text }
+        - { name: wer, label: "Wer", typ: text }
+        - { name: bis, label: "Bis", typ: datum }
+
+beispiele:
+  - datei: kassenbon.jpg
+    titel: "Kassenbon"
+    vorlage: beleg
+    muster:
+      haendler: "Baumarkt Mustermann"
+      datum: "2026-10-09"
+      uhrzeit: "14:37"
+      summe: 52.10
+      mwst_satz: 19
+      mwst_betrag: 8.32
+      zahlart: "EC-Karte"
+      belegnummer: "4711-0815"
+      positionen:
+        - { bezeichnung: "Holzschrauben 4x40 200St", menge: 2, einzelpreis: 8.99, gesamt: 17.98 }
+        - { bezeichnung: "Duebel 8mm 50St", menge: 1, einzelpreis: 4.49, gesamt: 4.49 }
+        - { bezeichnung: "Silikon transparent", menge: 3, einzelpreis: 6.95, gesamt: 20.85 }
+        - { bezeichnung: "Abdeckfolie 4x5m", menge: 1, einzelpreis: 3.29, gesamt: 3.29 }
+        - { bezeichnung: "Arbeitshandschuhe Gr.10", menge: 1, einzelpreis: 5.49, gesamt: 5.49 }
+
+  - datei: tankquittung.jpg
+    titel: "Tankquittung, verblasst"
+    vorlage: beleg
+    muster:
+      haendler: "Tankstelle am Ring"
+      datum: "2026-10-13"
+      uhrzeit: "07:52"
+      summe: 93.34
+      mwst_satz: 19
+      mwst_betrag: 14.90
+      zahlart: "Kreditkarte"
+      belegnummer: "20817"
+      positionen:
+        - { bezeichnung: "Diesel", menge: 52.31, einzelpreis: 1.689, gesamt: 88.35 }
+        - { bezeichnung: "Scheibenreiniger 1l", menge: 1, einzelpreis: 4.99, gesamt: 4.99 }
+
+  - datei: lieferschein.jpg
+    titel: "Lieferschein"
+    vorlage: lieferschein
+    muster:
+      lieferant: "Schrauben Huber GmbH"
+      kunde: "Metallbau Berger KG"
+      lieferschein_nr: "LS-2026-04817"
+      datum: "2026-10-12"
+      bestellnummer: "B-7731"
+      kundennummer: "10442"
+      positionen:
+        - { artikelnummer: "SH-4471", bezeichnung: "Sechskantschraube M10x60 verzinkt", menge: 200, einheit: "Stk" }
+        - { artikelnummer: "SH-1203", bezeichnung: "Unterlegscheibe M10 DIN 125", menge: 400, einheit: "Stk" }
+        - { artikelnummer: "SH-8890", bezeichnung: "Gewindestange M12 1 m", menge: 15, einheit: "Stk" }
+        - { artikelnummer: "SH-5521", bezeichnung: "Schweißdraht SG2 1,0 mm", menge: 2, einheit: "Rolle" }
+
+  - datei: typenschild.jpg
+    titel: "Typenschild Motor"
+    vorlage: typenschild
+    muster:
+      hersteller: "Elektromotoren Frank AG"
+      typ: "DM 112M-4"
+      seriennummer: "FR-2019-338471"
+      baujahr: 2019
+      leistung_kw: 4.0
+      spannung_v: 400
+      strom_a: 8.2
+      frequenz_hz: 50
+      drehzahl: 1440
+      schutzart: "IP55"
+      gewicht_kg: 31
+      wirkungsgrad: 88.6
+
+  - datei: whiteboard.jpg
+    titel: "Whiteboard"
+    vorlage: protokoll
+    muster:
+      titel: "Team-Meeting"
+      datum: "14.10."
+      naechster_termin_datum: "21.10."
+      naechster_termin_uhrzeit: "9:00"
+      aufgaben:
+        - { was: "Angebot Wartungsvertrag Berger", wer: "Anna", bis: "31.10." }
+        - { was: "Ersatzdichtung bestellen", wer: "Tom", bis: "16.10." }
+        - { was: "Messestand Stuttgart buchen", wer: "Lisa", bis: "23.10." }
+        - { was: "Server-Update testen", wer: "Ali", bis: "20.10." }

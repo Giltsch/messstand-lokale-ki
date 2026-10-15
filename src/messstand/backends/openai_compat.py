@@ -14,6 +14,7 @@ from typing import Any, AsyncIterator
 import httpx
 
 from .base import (
+    nachrichten_openai,
     Backend,
     DenkEvent,
     FehlerEvent,
@@ -121,7 +122,7 @@ class OpenAICompatBackend(HttpBackend):
     ) -> dict:
         nutzdaten: dict[str, Any] = {
             "model": model,
-            "messages": messages,
+            "messages": nachrichten_openai(messages),
             "stream": True,
             "stream_options": {"include_usage": True},
             "temperature": params.temperatur,

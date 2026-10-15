@@ -10,6 +10,7 @@ import { dokumenteAufbauen } from "./dokumente.js";
 import { ergebnisseAufbauen } from "./ergebnisse.js";
 import { ocrAufbauen } from "./ocr.js";
 import { spracheAufbauen } from "./sprache.js";
+import { fotoAufbauen } from "./foto.js";
 
 const REITER = [
   { id: "aufgabe", titel: "Aufgabe", aufbauen: aufgabeAufbauen },
@@ -21,6 +22,7 @@ const REITER = [
     aktiv: () => store.station?.lasttest?.erlaubt !== false,
   },
   { id: "dokumente", titel: "Dokumente", aufbauen: dokumenteAufbauen },
+  { id: "foto", titel: "Foto → Daten", aufbauen: fotoAufbauen },
   { id: "ocr", titel: "OCR", aufbauen: ocrAufbauen, aktiv: () => Boolean(store.station?.ocr) },
   { id: "sprache", titel: "Sprache", aufbauen: spracheAufbauen, aktiv: () => Boolean(store.station?.sprache) },
   { id: "ergebnisse", titel: "Ergebnisse", aufbauen: ergebnisseAufbauen },
