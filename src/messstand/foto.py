@@ -254,9 +254,8 @@ def router_bauen(zustand, presets: Path) -> APIRouter:
                     elif isinstance(e, MessungEvent):
                         messung = e.messung
             gelesen = json_aus(antwort)
-            bewertung = (
-                bewerten(vorlage, gelesen, beispiel["muster"]) if gelesen is not None and beispiel else None
-            )
+            # Ohne gueltiges JSON zaehlen alle Angaben als falsch, damit die Quote ehrlich bleibt.
+            bewertung = bewerten(vorlage, gelesen or {}, beispiel["muster"]) if beispiel else None
             if messung is not None:
                 zustand.warm.setdefault(backend_id, set()).add(modell_id)
                 notiz = f"Foto {beispiel['titel'] if beispiel else 'eigenes'}"

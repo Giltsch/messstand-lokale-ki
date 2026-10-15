@@ -232,6 +232,44 @@ Checkliste je Station:
 - [ ] Reiter „Ergebnisse": CSV speichern, Datei liegt in `results/`
 - [ ] Netzwerk trennen, alles noch einmal kurz durchspielen
 
+## Neue Reiter auf Mac mini und PC testen
+
+Stand Oktober 2026 sind dazugekommen: „Foto → Daten“ (alle Stationen),
+„OCR“ und „Sprache“ (nur Spark, erscheinen woanders gar nicht).
+
+1. Stand holen, solange Netz da ist:
+   ```
+   git fetch
+   git switch station-3-spark        # oder main, sobald zusammengeführt
+   git pull
+   uv sync                           # neue Abhängigkeiten: markdown, nh3
+   ```
+2. Ollama läuft, Modelle der Station sind gezogen (siehe oben).
+3. Messstand starten, zum Beispiel `uv run messstand --config stations/macmini.yaml`
+   (Windows: `start.bat stations\laptop.yaml`).
+4. In einem zweiten Fenster den Stationstest:
+   ```
+   uv run python tools/stationstest.py
+   ```
+   Er zeigt, welche Laufzeiten und Modelle da sind, lädt jedes Bild-fähige
+   Modell vor und lässt die fünf Beispielfotos durchlaufen. Ergebnis: eine
+   Tabelle („93 von 94 richtig, im Mittel 2,4 s pro Foto“) und eine CSV in
+   `results/`. Mit `--modell <id>` nur ein Modell, mit `--nur-status` nur die
+   Übersicht. Ollama-Modelle ohne Bildverständnis werden übersprungen.
+5. In der Oberfläche den Reiter „Foto → Daten“ einmal von Hand: Beispiel
+   anklicken, „Foto lesen“, dann den Stapel mit 4 Fotos.
+
+Zum Vergleichen: Die CSV-Dateien aller Stationen nebeneinanderlegen. Auf dem
+Spark gemessen (E2B / E4B / 26B / 31B): 87 bis 89 / 93 / 92 / 94 von 94 Angaben,
+im Mittel rund 3 / 2,4 / 6 / 13 s pro Foto.
+
+Was auf den anderen Stationen noch offen ist:
+
+| Station | Prüfen |
+|---|---|
+| Mac mini | Ob die MLX-Modelle (`gemma4:e4b-mlx`, `gemma4:26b-mlx`) Bilder annehmen. Der Stationstest fragt Ollama danach und überspringt sie sonst. |
+| Laptop | Ob LM Studio mit `gemma4-e2b-it` Bilder annimmt. Dafür muss in LM Studio die Vision-Variante des Modells geladen sein (mit „mmproj“-Datei). Sonst meldet der Stationstest „kein gültiges JSON“; Ollama mit E2B geht unabhängig davon. Auf der CPU dauert ein Foto deutlich länger, das ist gewollt sichtbar. |
+
 ## Wenn etwas hakt
 
 | Symptom | Ursache und Abhilfe |
@@ -243,6 +281,8 @@ Checkliste je Station:
 | „geschätzt" an den Werten | Die Laufzeit liefert keine Zählung, der Messstand hat Chunks gezählt. |
 | Dokumente-Reiter meckert | Einbettungsmodell fehlt: `ollama pull embeddinggemma`. |
 | Port 8765 belegt | `uv run messstand --config ... --port 8766` |
+| Foto → Daten: „kein gültiges JSON“ | Modell kann keine Bilder oder antwortet mit Text. Rohe Antwort aufklappen; anderes Modell wählen. |
+| Stationstest: „antwortet nicht“ | Erst den Messstand starten, dann das Skript im zweiten Fenster. |
 
 ## Rückfallebene
 

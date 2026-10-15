@@ -79,6 +79,14 @@ uv run python tools/offline_pruefen.py
 
 Prüft die Oberfläche auf externe Verweise und den Server auf lokale Bindung.
 
+```
+uv run python tools/stationstest.py
+```
+
+Gegen den laufenden Messstand: welche Laufzeiten und Modelle da sind, dann
+die Beispielfotos aus „Foto → Daten“ durch jedes Bild-fähige Modell, mit
+Tabelle und CSV in `results/`. Mehr in [docs/aufbau.md](docs/aufbau.md).
+
 Mehr zum Aufbau jeder Station steht in [docs/aufbau.md](docs/aufbau.md).
 
 ## Lizenz

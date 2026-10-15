@@ -295,7 +295,7 @@ def als_foto(
     leinwand = leinwand.filter(ImageFilter.GaussianBlur(0.8))
     rauschen = Image.effect_noise((W, H), 14).convert("RGB")
     leinwand = Image.blend(leinwand, rauschen, 0.05)
-    leinwand.thumbnail((1800, 1800))
+    leinwand.thumbnail((1600, 1600))  # wie die Oberflaeche: laengste Kante 1600 px
     return leinwand
 
 
