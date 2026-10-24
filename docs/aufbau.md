@@ -167,13 +167,13 @@ Modellreihe einfach nicht. Verlassen Sie sich auf die Messwerte.
 
 ## Station 3: DGX Spark (Ubuntu auf ARM64)
 
-- Ollama mit `gemma4:26b` und einem Modell, das auf 32 GB nicht passt
-- vLLM im NVIDIA-Container auf Port 8000, `--gpu-memory-utilization` so
-  niedrig wählen, dass Ollama mit dem großen Modell daneben Platz hat
-- Die Modell-IDs für vLLM in `stations/spark.yaml` nach dem Setup eintragen:
-  sie müssen genau so lauten, wie `curl http://127.0.0.1:8000/v1/models`
-  sie meldet
-- Start: `./start.sh`
+- Ollama mit den Gemma-4-Modellen aus `stations/spark.yaml`
+- vLLM-Gemma, Whisper, Sprecher-Dienst und LawAI-OCR startet
+  `spark/spark-modus.sh alles` gemeinsam (vLLM-Gemma auf Port 8004),
+  siehe [spark/README.md](../spark/README.md)
+- Die Modell-IDs für vLLM in `stations/spark.yaml` müssen genau so lauten,
+  wie `curl http://127.0.0.1:8004/v1/models` sie meldet
+- Start: `./start.sh stations/spark.yaml`
 
 ## Material für den Reiter „Dokumente"
 

@@ -1,19 +1,32 @@
 # Station 3: DGX Spark
 
 Der gemeinsame Speicher (121 GB für GPU und CPU) reicht nicht für alles
-gleichzeitig. Darum läuft immer ein Modus; `spark-modus.sh` schaltet um.
+gleichzeitig; läuft er voll, friert die Maschine ein. Darum läuft immer ein
+Modus; `spark-modus.sh` schaltet um. Für den Workshop reicht `alles`: Damit
+sind alle Reiter des Messstands gleichzeitig bereit, ohne Umschalten.
 
-| Modus | Was läuft | Reiter | Umschalten dauert (gemessen 15.10.2026) |
-|---|---|---|---|
-| `ocr` | LawAI: LightOnOCR-2 (:8000), Qwen3.8 27B als Prüfer (:8001), Oberfläche (:8080) | OCR | rund 5,5 min aus dem Kaltstart |
-| `sprache` | Whisper large-v3-turbo (:8002), Sprecher-Dienst TitaNet (:8003), GPT-OSS 120B | Sprache | rund 3,5 min |
-| `gross` | nur GPT-OSS 120B in Ollama | Aufgabe, Vergleich, Last | unter 30 s, wenn es schon geladen war |
-| `vergleich` | vLLM mit Gemma 4 26B NVFP4 (:8000) plus Ollama-Modelle | Vergleich „Ollama gegen vLLM“, Last | rund 4,5 min |
+| Modus | Was läuft | Speicher (grob) |
+|---|---|---|
+| `alles` | vLLM mit Gemma 4 26B NVFP4 (:8004), LawAI mit LightOnOCR-2 (:8000) und Oberfläche (:8080), Whisper large-v3-turbo (:8002), Sprecher-Dienst TitaNet (:8003), Ollama nach Bedarf | ~55 GB plus Ollama (Budget 40 GB) |
+| `bild` | alles oben aus, dann das FLUX-Studio (BFL-Demonstrator, :7860) mit Upsampler und Prüfer | ~75 GB |
+| `ocr` | LawAI wie im Alltag: LightOnOCR-2 (:8000) und Qwen3.8 27B als Prüfer (:8001) | ~66 GB |
 
 ```
+spark/spark-modus.sh alles
 spark/spark-modus.sh status
-spark/spark-modus.sh sprache
 ```
+
+Im Modus `alles` übernimmt das eine Gemma in vLLM drei Aufgaben: den
+Vergleich „Ollama gegen vLLM“ und den Lasttest, die Notizen im Reiter
+„Sprache“ und den Prüfer und Zweitleser von LawAI. Der Qwen-Prüfer (39 GB)
+bleibt aus. Dafür legt `spark-modus.sh` Laufzeit-Drop-ins unter
+`$XDG_RUNTIME_DIR/systemd/user/lawai-*.service.d/` an und sperrt
+`lawai-judge` per Startbedingung im Drop-in (gilt bis zum nächsten Neustart). LawAIs
+eigene Einstellungen in `~/.config/lawai/env` bleiben unberührt; `ocr` und
+`bild` räumen die Drop-ins wieder weg.
+
+GPT-OSS 120B (65 GB) passt neben `alles` nicht mehr und ist aus
+`stations/spark.yaml` entfernt.
 
 Der Messstand selbst (Port 8765) läuft in jedem Modus weiter.
 

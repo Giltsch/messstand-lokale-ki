@@ -8,11 +8,22 @@ import { ModellAuswahl } from "./auswahl.js";
 import { meldung, meldungLeeren } from "./meldungen.js";
 
 // Stuecke an Sprechpausen schneiden: frueh genug fuer „fast live“, lang
-// genug, dass Whisper Zusammenhang hat.
+// genug, dass Whisper Zusammenhang hat. Wer lange ohne Pause spricht, wird ab
+// STUECK_LANG_S schon an einer kurzen Pause geschnitten; hart (mitten im Wort)
+// erst kurz vor den 30 s, die Whisper auf einmal sieht.
 const STUECK_MIN_S = 4;
-const STUECK_MAX_S = 14;
+const STUECK_LANG_S = 12;
+const STUECK_MAX_S = 25;
 const PAUSE_MS = 450;
-const PAUSE_PEGEL = 0.018;
+const PAUSE_KURZ_MS = 150;
+// Die Sprechschwelle folgt dem Grundrauschen, statt fest zu sein: manche
+// Mikrofone liefern Sprache nur knapp ueber 0,02, und mit einer festen
+// Schwelle von 0,018 galt dort fast alles als Pause (Schnitte mitten im Wort,
+// ganze Stuecke verworfen).
+const SCHWELLE_ABSTAND = 3;
+const SCHWELLE_BODEN = 0.002;
+// Live-Zeile: das laufende Stueck so oft zur vorlaeufigen Erkennung schicken.
+const LIVE_TAKT_MS = 1000;
 
 const VORLESETEXT = `Anna: Gut, dann fangen wir an. Thema ist die Wartung der Abfüllanlage bei der Firma Berger in Ansbach.
 Tom: Ja, der Kunde hat gestern angerufen. Die Anlage verliert Druck, vermutlich die Dichtung am Ventilblock.
@@ -50,6 +61,9 @@ export function spracheAufbauen(wurzel) {
     rows: 12,
     placeholder: "Hier erscheint die Mitschrift, Stück für Stück, während gesprochen wird.",
   });
+  // Was gerade gesprochen wird, vorlaeufig; wird nach der naechsten Pause zur
+  // endgueltigen Zeile mit Sprecher in der Mitschrift.
+  const live = el("div", { class: "sp-live", hidden: true, "aria-live": "polite" });
   const werte = {
     audio: kachelwert(),
     rechnen: kachelwert(),
@@ -62,21 +76,25 @@ export function spracheAufbauen(wurzel) {
 
   let strom_ = null; // MediaStream
   let analyser = null;
-  let rekorder = null;
+  let stueck = null; // laufendes Stueck: { rekorder, teile, versatz, lautestes }
   let laeuft = false;
   let startzeit = 0;
   let stueckStart = 0;
   let leiseSeit = 0;
-  let lautestes = 0; // hoechster Pegel im laufenden Stueck
   let kette = Promise.resolve(); // Stuecke der Reihe nach erkennen
   let summe = { audio: 0, rechnen: 0 };
   let uhrTakt = null;
   let pegelLaeuft = false;
+  let grund = 0.01; // geschaetztes Grundrauschen: faellt schnell, steigt langsam
+  const offen = new Map(); // Stuecke ohne endgueltigen Text → vorlaeufiger Text
+  let liveUnterwegs = false; // hoechstens eine vorlaeufige Anfrage zugleich
 
   startKnopf.addEventListener("click", () => aufnahmeStarten());
   stopKnopf.addEventListener("click", () => aufnahmeStoppen());
   leerenKnopf.addEventListener("click", () => {
     mitschrift.value = "";
+    offen.clear();
+    liveZeichnen();
     zuordnung.leeren();
     sprecherZeichnen();
     summe = { audio: 0, rechnen: 0 };
@@ -112,6 +130,7 @@ export function spracheAufbauen(wurzel) {
       meldungsfeld,
       sprecherfeld,
       el("label", { class: "feld" }, ["Mitschrift (nach dem Stoppen korrigierbar)", mitschrift]),
+      live,
       el("div", { class: "zeile", style: "margin-top:.6rem" }, [
         el("label", { class: "feld" }, ["Oder eine Audiodatei einlesen", dateiwahl]),
       ]),
@@ -201,6 +220,10 @@ export function spracheAufbauen(wurzel) {
     return true;
   }
 
+  function schwelle() {
+    return Math.max(SCHWELLE_BODEN, grund * SCHWELLE_ABSTAND);
+  }
+
   function aktuellerPegel() {
     if (!analyser) return 0;
     const puffer = new Float32Array(analyser.fftSize);
@@ -213,7 +236,8 @@ export function spracheAufbauen(wurzel) {
   function pegelZeichnen() {
     const p = aktuellerPegel();
     pegel.firstChild.style.width = `${Math.min(100, p * 400)}%`;
-    pegel.classList.toggle("laut", p > PAUSE_PEGEL);
+    grund += (p - grund) * (p < grund ? 0.1 : 0.002);
+    pegel.classList.toggle("laut", p > schwelle());
     if (laeuft) pausenSchnitt(p);
     requestAnimationFrame(pegelZeichnen);
   }
@@ -238,47 +262,106 @@ export function spracheAufbauen(wurzel) {
   function aufnahmeStoppen() {
     laeuft = false;
     clearInterval(uhrTakt);
-    rekorder?.state === "recording" && rekorder.stop();
+    const letztes = stueck;
+    stueck = null;
+    // Erst entsperren, wenn auch das letzte Stueck erkannt ist: dessen
+    // „stop“ kommt verzoegert und haengt sich erst dann an die Kette.
+    const beendet =
+      letztes?.rekorder.state === "recording"
+        ? new Promise((fertig) => {
+            letztes.rekorder.addEventListener("stop", fertig, { once: true });
+            letztes.rekorder.stop();
+          })
+        : Promise.resolve();
     startKnopf.disabled = false;
     stopKnopf.disabled = true;
-    kette.then(() => {
+    beendet.then(() => kette).then(() => {
       mitschrift.readOnly = false;
       auswertung.sperren(false);
     });
   }
 
   function stueckBeginnen() {
-    const teile = [];
-    const versatz = (performance.now() - startzeit) / 1000;
-    rekorder = new MediaRecorder(strom_, { mimeType: "audio/webm;codecs=opus" });
-    rekorder.addEventListener("dataavailable", (e) => e.data.size && teile.push(e.data));
-    rekorder.addEventListener("stop", () => {
-      const blob = new Blob(teile, { type: "audio/webm" });
-      // Stille nicht schicken: Whisper erfindet dann gern „Vielen Dank.“
-      if (lautestes > PAUSE_PEGEL * 1.5) kette = kette.then(() => stueckErkennen(blob, versatz));
-      if (laeuft) stueckBeginnen();
+    const st = { teile: [], versatz: (performance.now() - startzeit) / 1000, lautestes: 0, fertig: false };
+    st.rekorder = new MediaRecorder(strom_, { mimeType: "audio/webm;codecs=opus" });
+    st.rekorder.addEventListener("dataavailable", (e) => {
+      if (e.data.size) st.teile.push(e.data);
+      liveSchicken(st);
     });
-    rekorder.start();
+    st.rekorder.addEventListener("stop", () => {
+      const blob = new Blob(st.teile, { type: "audio/webm" });
+      // Stille nicht schicken: Whisper erfindet dann gern „Vielen Dank.“
+      // Schon ein Ausschlag ueber die Sprechschwelle reicht, damit leise
+      // Sprecher nicht ganz verschwinden.
+      if (st.lautestes > schwelle()) kette = kette.then(() => stueckErkennen(blob, st));
+      else stueckErledigt(st);
+    });
+    offen.set(st, "");
+    // Mit Takt: alle LIVE_TAKT_MS ein Datenstueck, aus dem die Live-Zeile entsteht.
+    // Die gesammelten Teile ergeben zusammen immer eine gueltige webm-Datei.
+    st.rekorder.start(LIVE_TAKT_MS);
+    stueck = st;
     stueckStart = performance.now();
     leiseSeit = 0;
-    lautestes = 0;
+  }
+
+  // Erst das neue Stueck starten, dann das alte beenden. Frueher startete das
+  // neue erst im „stop“ des alten, und was dazwischen gesagt wurde, fehlte.
+  function stueckSchneiden() {
+    const altes = stueck;
+    stueckBeginnen();
+    altes.rekorder.stop();
   }
 
   function pausenSchnitt(p) {
-    if (!rekorder || rekorder.state !== "recording") return;
+    if (!stueck || stueck.rekorder.state !== "recording") return;
     const jetzt = performance.now();
     const dauer = (jetzt - stueckStart) / 1000;
-    lautestes = Math.max(lautestes, p);
-    if (p < PAUSE_PEGEL) leiseSeit ||= jetzt;
+    stueck.lautestes = Math.max(stueck.lautestes, p);
+    if (p < schwelle()) leiseSeit ||= jetzt;
     else leiseSeit = 0;
-    const pause = leiseSeit && jetzt - leiseSeit > PAUSE_MS;
-    if ((dauer > STUECK_MIN_S && pause) || dauer > STUECK_MAX_S) rekorder.stop();
+    const pause = leiseSeit && jetzt - leiseSeit > (dauer > STUECK_LANG_S ? PAUSE_KURZ_MS : PAUSE_MS);
+    if ((dauer > STUECK_MIN_S && pause) || dauer > STUECK_MAX_S) stueckSchneiden();
   }
 
-  async function stueckErkennen(blob, versatz) {
+  // Vorlaeufige Erkennung des laufenden Stuecks fuer die Live-Zeile. Faellt
+  // eine aus (Netz, Server beschaeftigt), kommt die naechste eine Sekunde spaeter.
+  async function liveSchicken(st) {
+    if (liveUnterwegs || st.fertig || st.rekorder.state !== "recording" || st.lautestes <= schwelle()) return;
+    liveUnterwegs = true;
+    const formular = new FormData();
+    formular.append("datei", new Blob(st.teile, { type: "audio/webm" }), "stueck.webm");
+    formular.append("vorlaeufig", "true");
+    try {
+      const antwort = await fetch("/api/sprache/erkennen", { method: "POST", body: formular });
+      const daten = await antwort.json();
+      if (antwort.ok && !st.fertig && offen.has(st)) {
+        offen.set(st, nurRauschen(daten.text || "") ? "" : daten.text);
+        liveZeichnen();
+      }
+    } catch {
+      // still: die endgueltige Erkennung meldet Fehler
+    } finally {
+      liveUnterwegs = false;
+    }
+  }
+
+  function stueckErledigt(st) {
+    st.fertig = true;
+    offen.delete(st);
+    liveZeichnen();
+  }
+
+  function liveZeichnen() {
+    const text = [...offen.values()].filter(Boolean).join(" … ");
+    live.textContent = text;
+    live.hidden = !text;
+  }
+
+  async function stueckErkennen(blob, st) {
+    const versatz = st.versatz;
     const formular = new FormData();
     formular.append("datei", blob, "stueck.webm");
-    formular.append("vorher", nurText(mitschrift.value).slice(-200));
     try {
       const antwort = await fetch("/api/sprache/erkennen", { method: "POST", body: formular });
       const daten = await antwort.json();
@@ -289,6 +372,8 @@ export function spracheAufbauen(wurzel) {
       zahlenZeichnen();
     } catch (fehler) {
       meldung(meldungsfeld, { art: "fehler", nachricht: "Ein Stück konnte nicht erkannt werden.", detail: String(fehler) });
+    } finally {
+      stueckErledigt(st);
     }
   }
 
@@ -477,9 +562,9 @@ function auswertungBauen(mitschriftHolen) {
   let steuerung = null;
   let gesperrt = false;
 
-  // GPT-OSS 120B vorwaehlen, wenn es da ist: das ist die Demo dafuer.
+  // Gemma 4 26B in vLLM vorwaehlen, wenn es da ist: laeuft im Modus „alles“ ohnehin.
   const gross = backends().flatMap((b) => b.modelle.map((m) => ({ b: b.id, m })))
-    .find(({ m }) => m.id === "gpt-oss:120b" && m.vorhanden);
+    .find(({ m }) => m.id === "google/gemma-4-26b-a4b-it" && m.vorhanden);
   if (gross) auswahl.setzen({ backend: gross.b, modell: gross.m.id });
 
   const karte = el("div", { class: "karte" }, [

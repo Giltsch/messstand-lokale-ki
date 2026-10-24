@@ -1,8 +1,8 @@
 #!/bin/bash
 # Spracherkennung für den Reiter „Sprache“ des Messstands: Whisper large-v3-turbo
 # über vLLM im NVIDIA-Container, OpenAI-kompatibel (/v1/audio/transcriptions).
-# Port 8002, damit es neben LawAI (8000, 8001) und vLLM-Gemma (8000) nicht kollidiert.
-# Braucht rund 10 GB; passt neben GPT-OSS 120B.
+# Port 8002, damit es neben LawAI (8000, 8001) und vLLM-Gemma (8004) nicht kollidiert.
+# Braucht rund 10 GB; läuft im Modus „alles“ neben allem anderen.
 # Stoppen: docker stop messstand-whisper
 # Ohne Netz startfähig: Modelle nur aus dem lokalen Cache. Für den ersten
 # Download einmal mit ONLINE=1 starten.

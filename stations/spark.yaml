@@ -9,10 +9,12 @@ backends:
     label: "Ollama, GGUF (llama.cpp)"
     typ: ollama
     url: http://127.0.0.1:11434
-    # Neben vLLM (25 % des Speichers) bleiben Ollama rund 81 GiB. GPT-OSS 120B
-    # belegt geladen etwa 65 GB. Passt ein Modell nicht mehr hinein, entlaedt
-    # der Messstand vorher das am laengsten nicht benutzte.
-    speicher_budget_gb: 80
+    # Im Modus „alles“ laufen daneben vLLM-Gemma (~25 GB), LightOnOCR (~10 GB),
+    # Whisper (~10 GB) und der Sprecher-Dienst. Ollama bleiben rund 40 GB:
+    # genug für „Dense gegen MoE“ (31B + 26B, 37 GB). Passt ein Modell nicht
+    # mehr hinein, entlaedt der Messstand vorher das am laengsten nicht benutzte.
+    # GPT-OSS 120B (65 GB) ist darum nicht mehr in der Liste.
+    speicher_budget_gb: 40
     modelle:
       # Dieselben Tags und Beschriftungen wie Station 1 und 2, damit die
       # Ergebnisse der Stationen direkt nebeneinander passen.
@@ -52,18 +54,12 @@ backends:
         parameter_gesamt_mrd: 31
         parameter_aktiv_mrd: 31
         groesse_gb: 20
-      - id: gpt-oss:120b
-        label: "GPT-OSS 120B, MoE (passt auf 32 GB nicht)"
-        architektur: moe
-        parameter_gesamt_mrd: 120
-        parameter_aktiv_mrd: 5.1
-        groesse_gb: 65
   # vLLM: nvidia/Gemma-4-26B-A4B-NVFP4, ausgeliefert unter dem Namen unten
   # (siehe --served-model-name in spark/vllm-starten.sh).
   - id: vllm
     label: "vLLM"
     typ: openai
-    url: http://127.0.0.1:8000/v1
+    url: http://127.0.0.1:8004/v1
     modelle:
       - id: google/gemma-4-26b-a4b-it
         label: "Gemma 4 26B A4B, vLLM, NVFP4"
@@ -98,10 +94,6 @@ vergleiche:
   - name: "Vier Bit gegen sechzehn Bit"
     a: { backend: ollama, modell: gemma4:e4b-it-bf16 }
     b: { backend: ollama, modell: gemma4:e4b-it-q4_K_M }
-  # 120 gegen 26 Milliarden Parameter, aber fast gleich viele aktive.
-  - name: "Großer MoE gegen kleinen MoE"
-    a: { backend: ollama, modell: gpt-oss:120b }
-    b: { backend: ollama, modell: gemma4:26b-a4b-it-q4_K_M }
 
 lasttest:
   erlaubt: true
@@ -110,7 +102,7 @@ lasttest:
   hinweis_parallelitaet: "Ollama läuft hier mit OLLAMA_NUM_PARALLEL=8, vLLM plant Anfragen selbst ein."
 
 # Eigenes OCR-Werkzeug (KILaw/LawAI), läuft als systemd-Dienst lawai-app.
-# Nur im Modus „ocr“ von spark/spark-modus.sh erreichbar. Gezeigt werden nur
+# Im Modus „alles“ von spark/spark-modus.sh erreichbar, Prüfer ist dann Gemma (:8004). Gezeigt werden nur
 # diese Beispiele und Dateien, die über den Messstand hochgeladen wurden;
 # andere (interne) Dokumente im OCR-Werkzeug bleiben unsichtbar.
 ocr:
@@ -139,7 +131,7 @@ ocr:
       zeigt: "Seite größer als das Modell sie sehen kann, wird zerlegt und wieder zusammengesetzt"
 
 # Spracherkennung für den Reiter „Sprache“: spark/whisper-starten.sh (Port 8002),
-# am einfachsten über spark/spark-modus.sh sprache (Whisper plus GPT-OSS 120B).
+# am einfachsten über spark/spark-modus.sh alles.
 sprache:
   url: http://127.0.0.1:8002/v1
   modell: openai/whisper-large-v3-turbo

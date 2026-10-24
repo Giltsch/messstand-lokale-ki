@@ -578,6 +578,8 @@ input[type="file"] { font-size: .9rem; }
 .sp-pegel.laut .sp-pegel-fuellung { background: var(--gut); }
 .sp-uhr { font-size: 1.6rem; font-weight: 700; font-variant-numeric: tabular-nums; align-self: center; min-width: 4rem; }
 .sp-mitschrift { width: 100%; font-size: 1.05rem; line-height: 1.55; }
+.sp-live { margin-top: .4rem; padding: .5rem .75rem; border-left: 3px solid var(--rahmen-stark); color: var(--text-leise); font-size: 1.05rem; line-height: 1.55; font-style: italic; }
+.sp-live::before { content: "Gerade gesprochen: "; font-style: normal; font-weight: 600; }
 .sp-vorlesen { margin-top: .8rem; }
 .sp-vorlesen summary { cursor: pointer; font-weight: 600; }
 .sp-notizen { margin-top: .4rem; }

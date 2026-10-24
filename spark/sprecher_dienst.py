@@ -5,7 +5,7 @@ die Stimme beschreibt, nicht das Gesagte. Gleiche Stimme ergibt ähnliche
 Vektoren. Zuordnen (Sprecher 1, 2, …) tut der Messstand selbst.
 
 Start (nutzt die Umgebung aus dem Projekt speech_to_text, dort liegen NeMo
-und das Modell); spark/spark-modus.sh sprache erledigt das:
+und das Modell); spark/spark-modus.sh alles erledigt das:
     ~/Dokumente/Projekte/speech_to_text/.venv/bin/python spark/sprecher_dienst.py   # Port 8003
 
 POST /einbettungen   {"wav_b64": "...", "abschnitte": [[start_s, ende_s], ...]}
