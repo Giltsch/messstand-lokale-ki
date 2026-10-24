@@ -7,7 +7,7 @@ sind alle Reiter des Messstands gleichzeitig bereit, ohne Umschalten.
 
 | Modus | Was läuft | Speicher (grob) |
 |---|---|---|
-| `alles` | vLLM mit Gemma 4 26B NVFP4 (:8004), LawAI mit LightOnOCR-2 (:8000) und Oberfläche (:8080), Whisper large-v3-turbo (:8002), Sprecher-Dienst TitaNet (:8003), Ollama nach Bedarf | ~55 GB plus Ollama (Budget 40 GB) |
+| `alles` | vLLM mit Gemma 4 26B NVFP4 (:8004), LawAI mit LightOnOCR-2 (:8000) und Oberfläche (:8080), Whisper large-v3-turbo (:8002), Sprecher-Dienst TitaNet (:8003), Open WebUI als Chat (:3001), Ollama nach Bedarf | ~55 GB plus Ollama (Budget 40 GB) |
 | `bild` | alles oben aus, dann das FLUX-Studio (BFL-Demonstrator, :7860) mit Upsampler und Prüfer | ~75 GB |
 | `ocr` | LawAI wie im Alltag: LightOnOCR-2 (:8000) und Qwen3.8 27B als Prüfer (:8001) | ~66 GB |
 
@@ -28,6 +28,12 @@ eigene Einstellungen in `~/.config/lawai/env` bleiben unberührt; `ocr` und
 GPT-OSS 120B (65 GB) passt neben `alles` nicht mehr und ist aus
 `stations/spark.yaml` entfernt.
 
+Open WebUI (`webui-starten.sh`, http://127.0.0.1:3001) ist ein Chat zum freien
+Ausprobieren, ohne Anmeldung. Angeboten werden nur die Ollama-Modelle aus
+`stations/spark.yaml` und vLLM-Gemma: `webui_einrichten.py` setzt die
+Freigabeliste, damit niemand GPT-OSS 120B, Nemotron oder ein Cloud-Modell
+anklickt.
+
 Der Messstand selbst (Port 8765) läuft in jedem Modus weiter.
 
 ## Ohne Netz
@@ -42,6 +48,7 @@ starten, zum Beispiel `ONLINE=1 spark/whisper-starten.sh`.
 |---|---|
 | `spark-modus.sh` | Modus umschalten, Status zeigen |
 | `vllm-starten.sh` | vLLM-Gemma im NVIDIA-Container |
+| `webui-starten.sh`, `webui_einrichten.py` | Open WebUI als Chat, nur mit den Modellen der Station |
 | `whisper-starten.sh` | Whisper im NVIDIA-Container |
 | `sprecher_dienst.py` | Stimmabdrücke; braucht die Python-Umgebung aus `speech_to_text` (`SPRECHER_PYTHON`) |
 | `logs/` | Protokolle der Dienste (nicht im Repo) |

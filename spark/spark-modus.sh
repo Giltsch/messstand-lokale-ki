@@ -6,7 +6,8 @@
 #   spark/spark-modus.sh alles    der ganze Messstand auf einmal, ohne Umschalten:
 #                                 vLLM-Gemma (:8004), LawAI-OCR mit LightOnOCR (:8000)
 #                                 und Oberfläche (:8080), Whisper (:8002),
-#                                 Sprecher-Dienst (:8003), Ollama für die kleinen Modelle.
+#                                 Sprecher-Dienst (:8003), Ollama für die kleinen Modelle,
+#                                 Open WebUI als Chat (:3001).
 #                                 Gemma ist zugleich Prüfer und Zweitleser des OCR.
 #   spark/spark-modus.sh bild     alles oben aus, dann das FLUX-Studio (BFL-Demonstrator, :7860)
 #   spark/spark-modus.sh ocr      LawAI wie im Alltag: LightOnOCR + Qwen3.8 27B als Prüfer,
@@ -39,6 +40,7 @@ ollama_leeren() {
 lawai_aus()  { echo "  OCR-Dienste anhalten"; systemctl --user stop lawai-app lawai-judge lawai-ocr; }
 flux_aus()   { systemctl --user stop flux-studio flux-judge flux-pup 2>/dev/null || true; }
 vllm_aus()   { docker stop messstand-vllm >/dev/null 2>&1 && echo "  vLLM-Container angehalten" || true; }
+webui_aus()  { docker stop messstand-webui >/dev/null 2>&1 && echo "  Open WebUI angehalten" || true; }
 whisper_aus() {
   docker stop messstand-whisper >/dev/null 2>&1 && echo "  Whisper-Container angehalten" || true
   fuser -k 8003/tcp >/dev/null 2>&1 && echo "  Sprecher-Dienst angehalten" || true
@@ -79,6 +81,7 @@ status() {
   echo; echo "vLLM-Container:    $(docker ps --filter name=messstand-vllm --format '{{.Status}}' 2>/dev/null || true)"
   echo "Whisper-Container: $(docker ps --filter name=messstand-whisper --format '{{.Status}}' 2>/dev/null || true)"
   echo "Sprecher-Dienst:   $(curl -sf http://127.0.0.1:8003/health >/dev/null && echo läuft || echo aus)"
+  echo "Open WebUI:        $(curl -sf http://127.0.0.1:3001/health >/dev/null && echo "läuft (http://127.0.0.1:3001)" || echo aus)"
   echo "FLUX-Studio:       $(systemctl --user is-active flux-studio)"
   echo; echo "Ollama geladen:"
   curl -s "$OLLAMA/api/ps" | python3 -c 'import json,sys; [print("  %-28s %5.1f GB" % (m["name"], m["size"]/1e9)) for m in json.load(sys.stdin).get("models", [])]' 2>/dev/null || echo "  (Ollama antwortet nicht)"
@@ -110,16 +113,18 @@ case "${1:-status}" in
     fi
     echo "  OCR-Oberfläche starten"
     systemctl --user start lawai-app
+    echo "  Open WebUI starten"
+    "$HIER/webui-starten.sh" | sed 's/^/  /'
     echo "  Alles bereit."
     ;;
   bild)
-    lawai_aus; vllm_aus; whisper_aus; ollama_leeren; lawai_alltag; sleep 5
+    lawai_aus; vllm_aus; whisper_aus; webui_aus; ollama_leeren; lawai_alltag; sleep 5
     echo "  FLUX-Studio starten (lädt FLUX, danach Upsampler und Prüfer; dauert einige Minuten)"
     systemctl --user start flux-studio
     warten_auf http://127.0.0.1:7860/api/status 900 && echo "  FLUX-Studio antwortet auf :7860."
     ;;
   ocr)
-    flux_aus; vllm_aus; whisper_aus; ollama_leeren; lawai_aus; lawai_alltag; sleep 3
+    flux_aus; vllm_aus; whisper_aus; webui_aus; ollama_leeren; lawai_aus; lawai_alltag; sleep 3
     # Nacheinander: Prüfer und Oberfläche warten beim Start auf den OCR-Server,
     # und systemd bricht dieses Warten sonst nach 90 s ab.
     echo "  OCR-Server starten"
