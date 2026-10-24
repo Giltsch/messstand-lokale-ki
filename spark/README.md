@@ -36,6 +36,8 @@ anklickt.
 
 Der Messstand selbst (Port 8765) läuft in jedem Modus weiter.
 
+Für den Workshoptag: Spickzettel in [WORKSHOPTAG.md](WORKSHOPTAG.md).
+
 ## Ohne Netz
 
 Whisper, vLLM-Gemma und der Sprecher-Dienst laden Modelle nur aus dem lokalen
